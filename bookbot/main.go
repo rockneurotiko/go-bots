@@ -51,13 +51,15 @@ var passphrasestart = ""
 func start(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
 	if len(args) <= 1 || passphrasestart == "" {
 		res := buildHelp()
-		return &res
+		bot.Answer(msg).Text(res).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 
 	suplied := args[1]
 	if suplied != passphrasestart {
 		str := "Bad passphrase, sorry."
-		return &str
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 	id := fmt.Sprintf("%v", msg.Chat.ID)
 	usersallowed[id] = true
@@ -96,7 +98,8 @@ func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 		return nil
 	}
 	res := buildHelp()
-	return &res
+	bot.Answer(msg).Text(res).ReplyToMessage(msg.ID).End()
+	return nil
 }
 
 func getCleanPath(u int, p string) string {
@@ -162,7 +165,8 @@ func cd(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]stri
 		userpath[uid] = base
 		str := buildSafeSendPath(base)
 		str = fmt.Sprintf("%s:\n---------\n%s", str, buildList(base))
-		return &str
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 	p := args[1]
 
@@ -170,12 +174,14 @@ func cd(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]stri
 	if err == nil {
 		if i < 0 {
 			str := "The number is negative... so bad..."
-			return &str
+			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+			return nil
 		}
 		p, err = getPathFromInt(uid, i)
 		if err != nil {
 			str := err.Error()
-			return &str
+			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+			return nil
 		}
 	}
 
@@ -184,8 +190,9 @@ func cd(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]stri
 	// Check if exist
 	// cd p
 	if !isValidDir(p) {
-		msg := "Path " + buildSafeSendPath(p) + " is not valid (maybe is a file?)"
-		return &msg
+		str := "Path " + buildSafeSendPath(p) + " is not valid (maybe is a file?)"
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 	userpath[uid] = p
 	pc := buildSafeSendPath(p)
@@ -218,19 +225,22 @@ func ls(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]stri
 		if err == nil {
 			if i < 0 {
 				str := "The number is negative... so bad..."
-				return &str
+				bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+				return nil
 			}
 			p, err = getPathFromInt(uid, i)
 			if err != nil {
 				str := err.Error()
-				return &str
+				bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+				return nil
 			}
 		}
 		path = getCleanPath(uid, p)
 	}
 	if !isValidDir(path) {
 		str := "Not valid dir: " + buildSafeSendPath(path)
-		return &str
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 	pc := buildSafeSendPath(path)
 	str := fmt.Sprintf("%s:\n---------\n%s", pc, buildList(path))
@@ -283,12 +293,14 @@ func download(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[strin
 	if err == nil {
 		if i < 0 {
 			str := "The number is negative... so bad..."
-			return &str
+			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+			return nil
 		}
 		filen, err = getPathFromInt(uid, i)
 		if err != nil {
 			str := err.Error()
-			return &str
+			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+			return nil
 		}
 	}
 
@@ -304,7 +316,8 @@ func download(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[strin
 
 	if !isValidFile(path) {
 		str := "Not valid file: " + buildSafeSendPath(path)
-		return &str
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 
 	bot.Answer(msg).Text("Sending file: " + buildSafeSendPath(path)).End()
