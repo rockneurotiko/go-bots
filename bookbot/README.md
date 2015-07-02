@@ -49,3 +49,26 @@ Parameters to configure the program (All the paths are OS-like you are using, in
 That's all! Just run the file you edited! The program will show you the paths configured (if you see that it's not what you want, just stop it and modify the file) and what had been loaded from the database.
 
 I hope you that you enjoy it!
+
+# Other things
+
+- Commands of the bot:
+  - `/start <pwd>`: Start the bot, use it when the bot have password
+  - `/help`: Get the help.
+  - `/cd`: Change your relative path to $HOME (the base)
+  - `/cd <name|id>`: Change your relative path to the specified (I recommend use the number listed)
+  - `/ls`: Show the files and directories in the current path
+  - `/ls <name|id>`: Show the files and directories in the path specified.
+  - `/download <name|id>` | `/dl <name|id>` | `/dw <name|id>`: Download the file specified.
+
+
+This is what you can send to @botfather when you use the `/setcommands`:
+```
+start - Start the bot
+help - Show this help
+cd - Change user directory
+ls - Show current user directory content
+download - Download specified file
+dw - Shortcut to /download :)
+dl - Shourcut to /download :)
+```

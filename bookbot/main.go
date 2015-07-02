@@ -24,9 +24,11 @@ import (
 // ls - Show current user directory content
 // download - Download specified file
 // dw - Shortcut to /download :)
+// dl - Shourcut to /download :)
 
 var availableCommands = map[string]string{
 	"/start":              "Start the bot",
+	"/start <pwd>":        "Start the bot, use it when the bot have password",
 	"/help":               "Show this help",
 	"/cd":                 "Change user directory",
 	"/cd <name|id>":       "Change user directory to the specified",
@@ -34,6 +36,7 @@ var availableCommands = map[string]string{
 	"/ls <name|id>":       "Show specified directory content",
 	"/download <name|id>": "Download specified file",
 	"/dw <name|id>":       "Shortcut to /download :)",
+	"/dl <name|id>":       "Another shortcut to /download :)",
 }
 
 var bookid = map[string]string{}
@@ -49,6 +52,10 @@ func start(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]s
 	if passphrasestart == "" {
 		str := "Wellcome!"
 		return &str
+	}
+	if len(args) == 1 {
+		res := buildHelp()
+		return &res
 	}
 	suplied := args[1]
 	if suplied != passphrasestart {
@@ -70,10 +77,7 @@ func canUser(msg tgbot.Message) bool {
 	return ok
 }
 
-func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
-	if !canUser(msg) {
-		return nil
-	}
+func buildHelp() string {
 	var buffer bytes.Buffer
 	orderk := []string{}
 	for cmd := range availableCommands {
@@ -84,7 +88,14 @@ func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 		htext := availableCommands[cmd]
 		buffer.WriteString(fmt.Sprintf("%s - %s\n", cmd, htext))
 	}
-	res := buffer.String()
+	return buffer.String()
+}
+
+func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	if !canUser(msg) {
+		return nil
+	}
+	res := buildHelp()
 	return &res
 }
 
@@ -382,7 +393,7 @@ func main() {
 	bot.MultiCommandFn([]string{`start`, `start (.+)`}, start)
 	bot.MultiCommandFn([]string{`cd`, `cd ([\w/]+)`}, cd)
 	bot.MultiCommandFn([]string{`ls`, `ls ([\w/]+)`}, ls)
-	bot.MultiCommandFn([]string{`download ([\w/]+)`, `dw ([\w/]+)`}, download)
+	bot.MultiCommandFn([]string{`download ([\w/]+)`, `dw ([\w/]+)`, `dl ([\w]+)`}, download)
 
 	bot.SimpleStart()
 }
