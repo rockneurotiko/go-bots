@@ -49,20 +49,17 @@ var dbdir = ""
 var passphrasestart = ""
 
 func start(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
-	if passphrasestart == "" {
-		str := "Wellcome!"
-		return &str
-	}
-	if len(args) == 1 {
+	if len(args) <= 1 || passphrasestart == "" {
 		res := buildHelp()
 		return &res
 	}
+
 	suplied := args[1]
 	if suplied != passphrasestart {
 		str := "Bad passphrase, sorry."
 		return &str
 	}
-	id := string(msg.Chat.ID)
+	id := fmt.Sprintf("%v", msg.Chat.ID)
 	usersallowed[id] = true
 	saveInDb("user:"+id, "true")
 	bot.Answer(msg).Text("Yay! You are now allowed to use me :-) <3").ReplyToMessage(msg.ID).End()
@@ -73,8 +70,11 @@ func canUser(msg tgbot.Message) bool {
 	if passphrasestart == "" {
 		return true
 	}
-	_, ok := usersallowed[string(msg.Chat.ID)]
-	return ok
+
+	fmt.Println(usersallowed)
+	str := fmt.Sprintf("%v", msg.Chat.ID)
+	v, ok := usersallowed[str]
+	return ok && v
 }
 
 func buildHelp() string {
@@ -345,10 +345,10 @@ func readAllDb() {
 		key := string(iter.Key())
 		value := string(iter.Value())
 		if strings.HasPrefix(key, "book:") {
-			bookid[key] = value
+			bookid[key[5:]] = value
 			booksn += 1
 		} else if strings.HasPrefix(key, "user:") {
-			usersallowed[key] = value == "true"
+			usersallowed[key[5:]] = value == "true"
 			usersn += 1
 		}
 	}
@@ -380,7 +380,6 @@ func main() {
 	} else {
 		fmt.Println("Your bot is password protected.\nThe users set the password with:\n/start <pwd>")
 	}
-
 	readAllDb()
 
 	godotenv.Load("secrets.env")
