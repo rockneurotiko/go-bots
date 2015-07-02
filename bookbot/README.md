@@ -4,7 +4,7 @@ This is the source code of the first bot developed with my [Telegram Bot's API l
 
 I called Book Bot because is the purpose that I use, but actually is more like a file server, because you can send any document :smile:
 
-You don't have to know any coding, just look the [execute](#Execute) section.
+You don't have to know any coding, just look the [execute](#execute) section.
 
 If you have any suggestion, issue, review or whatever, you can talk to me in [telegram](https://telegram.me/rock_neurotiko)
 
@@ -14,7 +14,7 @@ There is an example imagen of what can do ;-)
 
 ![alt screenshot](http://web.neurotiko.com/bookbot_screenshot.png)
 
-(And yes, I have that book bought :P)
+(And yes, I have that book purchased :P)
 
 # Features!
 
@@ -39,7 +39,8 @@ Parameters to configure the program (All the paths are OS-like you are using, in
 - Talk with [@botfather](https://telegram.me/botfather) and create a new bot following the steps.
 - Change the "YOURKEY" in `secrets.env` file to the one that @botfather gived to you.
 - If you are in unix system open `run.sh` if you are in windows open `run.cmd`, if you are not in any of these, see some of these to know how to run it xD
-- Change the values like you want, the values ar the three explained in the [configure](#Configure) section:
+- Change the values like you want, the values are the three explained in the [configure](#configure) section one the binary:
+  - BINARY: The path for the binary, make sure that the one you need!
   - BOOKSPATH: Base directory of the files
   - DBPATH: Directory of the database
   - PWD: The password to protect the bot. It can be empty if you don't want to protect.

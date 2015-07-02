@@ -8,4 +8,4 @@ You can talk to me in [telegram](https://telegram.me/rock_neurotiko)
 
 # Bots (In any order)
 
-- [Book Bot (File Share Bot)](https://www.github.com/rockneurotiko/go-bots/bookbot) - This is a bot that makes easy to share a directory from your disk.
+- [Book Bot (File Share Bot)](https://github.com/rockneurotiko/go-bots/tree/master/bookbot) - This is a bot that makes easy to share a directory from your disk.
