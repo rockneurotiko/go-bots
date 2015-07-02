@@ -73,7 +73,6 @@ func canUser(msg tgbot.Message) bool {
 		return true
 	}
 
-	fmt.Println(usersallowed)
 	str := fmt.Sprintf("%v", msg.Chat.ID)
 	v, ok := usersallowed[str]
 	return ok && v
