@@ -25,18 +25,20 @@ import (
 // download - Download specified file
 // dw - Shortcut to /download :)
 // dl - Shourcut to /download :)
+// hidekeyboard - Hide the keyboard
 
 var availableCommands = map[string]string{
-	"/start":              "Start the bot",
-	"/start <pwd>":        "Start the bot, use it when the bot have password",
-	"/help":               "Show this help",
-	"/cd":                 "Change user directory",
-	"/cd <name|id>":       "Change user directory to the specified",
-	"/ls":                 "Show current user directory content",
-	"/ls <name|id>":       "Show specified directory content",
-	"/download <name|id>": "Download specified file",
-	"/dw <name|id>":       "Shortcut to /download :)",
-	"/dl <name|id>":       "Another shortcut to /download :)",
+	"/start":         "Start the bot",
+	"/start <pwd>":   "Start the bot, use it when the bot have password",
+	"/help":          "Show this help",
+	"/cd":            "Change user directory",
+	"/cd <id>":       "Change user directory to the specified",
+	"/ls":            "Show current user directory content",
+	"/ls <id>":       "Show specified directory content",
+	"/download <id>": "Download specified file",
+	"/dw <id>":       "Shortcut to /download :)",
+	"/dl <id>":       "Another shortcut to /download :)",
+	"/hidekeyboard":  "Hide the keyboard for you!",
 }
 
 var bookid = make(map[string]string)
@@ -47,6 +49,18 @@ var usersallowed = make(map[string]bool)
 var base = ""
 var dbdir = ""
 var passphrasestart = ""
+
+func buildKeyboard(ops []string) [][]string {
+	keylayout := [][]string{{}}
+	for _, k := range ops {
+		if len(keylayout[len(keylayout)-1]) == 2 {
+			keylayout = append(keylayout, []string{k})
+		} else {
+			keylayout[len(keylayout)-1] = append(keylayout[len(keylayout)-1], k)
+		}
+	}
+	return keylayout
+}
 
 func start(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
 	if len(args) <= 1 || passphrasestart == "" {
@@ -65,6 +79,12 @@ func start(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]s
 	usersallowed[id] = true
 	saveInDb("user:"+id, "true")
 	bot.Answer(msg).Text("Yay! You are now allowed to use me :-) <3").ReplyToMessage(msg.ID).End()
+	return nil
+}
+
+func hidekeyboard(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	rkm := tgbot.ReplyKeyboardHide{HideKeyboard: true, Selective: true}
+	bot.Answer(msg).Text("Hidden!").KeyboardHide(rkm).End()
 	return nil
 }
 
@@ -105,6 +125,9 @@ func getCleanPath(u int, p string) string {
 	nbase, ok := userpath[u]
 	if !ok {
 		nbase = base
+	}
+	if p == ".." && nbase == base {
+		p = ""
 	}
 	return filepath.Clean(filepath.Join(nbase, p))
 }
@@ -154,19 +177,31 @@ func getPathFromInt(uid int, n int) (string, error) {
 	return files[n].Name(), nil
 }
 
-func cd(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
+func cdhome(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	if !canUser(msg) {
 		return nil
 	}
 	uid := msg.From.ID
-	if len(args) == 1 {
-		// cd base
-		userpath[uid] = base
-		str := buildSafeSendPath(base)
-		str = fmt.Sprintf("%s:\n---------\n%s", str, buildList(base))
-		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+	// cd base
+	userpath[uid] = base
+	str := buildSafeSendPath(base)
+	lists, keyb := buildListKey(base)
+	str = fmt.Sprintf("%s:\n---------\n%s", str, lists)
+	keyl := buildKeyboard(keyb)
+	rkm := tgbot.ReplyKeyboardMarkup{
+		Keyboard:        keyl,
+		ResizeKeyboard:  false,
+		OneTimeKeyboard: true,
+		Selective:       true}
+	bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).Keyboard(rkm).End()
+	return nil
+}
+
+func cdother(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
+	if !canUser(msg) {
 		return nil
 	}
+	uid := msg.From.ID
 	p := args[1]
 
 	i, err := strconv.Atoi(p)
@@ -195,58 +230,93 @@ func cd(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]stri
 	}
 	userpath[uid] = p
 	pc := buildSafeSendPath(p)
-	str := fmt.Sprintf("%s:\n---------\n%s", pc, buildList(p))
+	lists, keyb := buildListKey(p)
+	str := fmt.Sprintf("%s:\n---------\n%s", pc, lists)
+	keyl := buildKeyboard(keyb)
+	rkm := tgbot.ReplyKeyboardMarkup{
+		Keyboard:        keyl,
+		ResizeKeyboard:  false,
+		OneTimeKeyboard: true,
+		Selective:       true}
+
 	newstr := divideAndConquer(str)
 	for _, s := range newstr {
-		bot.Answer(msg).Text(s).ReplyToMessage(msg.ID).End()
+		bot.Answer(msg).Text(s).ReplyToMessage(msg.ID).Keyboard(rkm).End()
 	}
 	return nil
 }
 
-func ls(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
+func lskey(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	if !canUser(msg) {
 		return nil
 	}
 	uid := msg.From.ID
-	path := base
-	if len(args) == 1 {
-		// cd base
-		p, ok := userpath[uid]
-		path = p
-		if !ok {
-			path = base
-			userpath[uid] = base
-		}
-	} else {
-		p := args[1]
-
-		i, err := strconv.Atoi(p)
-		if err == nil {
-			if i < 0 {
-				str := "The number is negative... so bad..."
-				bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
-				return nil
-			}
-			p, err = getPathFromInt(uid, i)
-			if err != nil {
-				str := err.Error()
-				bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
-				return nil
-			}
-		}
-		path = getCleanPath(uid, p)
+	p, ok := userpath[uid]
+	path := p
+	if !ok {
+		path = base
+		userpath[uid] = base
 	}
+
 	if !isValidDir(path) {
 		str := "Not valid dir: " + buildSafeSendPath(path)
 		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
 		return nil
 	}
 	pc := buildSafeSendPath(path)
-	str := fmt.Sprintf("%s:\n---------\n%s", pc, buildList(path))
+	str, keyb := buildListKey(path)
+	str = fmt.Sprintf("%s:\n---------\n%s", pc, str)
+
+	keyl := buildKeyboard(keyb)
+	rkm := tgbot.ReplyKeyboardMarkup{
+		Keyboard:        keyl,
+		ResizeKeyboard:  false,
+		OneTimeKeyboard: true,
+		Selective:       true}
 
 	newstr := divideAndConquer(str)
 	for _, s := range newstr {
-		bot.Answer(msg).Text(s).ReplyToMessage(msg.ID).End()
+		bot.Answer(msg).Text(s).ReplyToMessage(msg.ID).Keyboard(rkm).End()
+	}
+	return nil
+}
+
+func lsother(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
+	uid := msg.From.ID
+	p := args[1]
+
+	i, err := strconv.Atoi(p)
+	if err == nil {
+		if i < 0 {
+			str := "The number is negative... so bad..."
+			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+			return nil
+		}
+		p, err = getPathFromInt(uid, i)
+		if err != nil {
+			str := err.Error()
+			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+			return nil
+		}
+	}
+	p = getCleanPath(uid, p)
+
+	if !isValidDir(p) {
+		str := "Not valid dir: " + buildSafeSendPath(p)
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
+	}
+
+	pc := buildSafeSendPath(p)
+	str := fmt.Sprintf("%s:\n---------\n%s", pc, buildList(p))
+	rkm := tgbot.ReplyKeyboardMarkup{
+		Keyboard:        [][]string{{fmt.Sprintf(`/cd %d`, i)}},
+		ResizeKeyboard:  false,
+		OneTimeKeyboard: true,
+		Selective:       true}
+	newstr := divideAndConquer(str)
+	for _, s := range newstr {
+		bot.Answer(msg).Text(s).ReplyToMessage(msg.ID).Keyboard(rkm).End()
 	}
 	return nil
 }
@@ -265,6 +335,30 @@ func divideAndConquer(str string) []string {
 
 }
 
+func buildListKey(path string) (string, []string) {
+	files := getFiles(path)
+	kf := []string{}
+	var buffer bytes.Buffer
+	for i, f := range files {
+		name := filepath.Base(f.Name())
+		if f.IsDir() {
+			buffer.WriteString(fmt.Sprintf("%d) [D] - %s\n", i, name))
+			kf = append(kf, fmt.Sprintf("/cd %d (%s)", i, name))
+		} else {
+			buffer.WriteString(fmt.Sprintf("%d) [F] - %s\n", i, name))
+			kf = append(kf, fmt.Sprintf("/dl %d (%s)", i, name))
+		}
+	}
+	if path != base {
+		backd := filepath.Clean(filepath.Join(path, ".."))
+		kf = append(kf, fmt.Sprintf(`/cd .. (%s)`, backd))
+	}
+	kf = append(kf, `/hidekeyboard`)
+
+	str := buffer.String()
+	return str, kf
+}
+
 func buildList(path string) string {
 	files := getFiles(path)
 	var buffer bytes.Buffer
@@ -280,7 +374,7 @@ func buildList(path string) string {
 	return str
 }
 
-func download(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
+func downloadkey(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
 	if !canUser(msg) {
 		return nil
 	}
@@ -289,25 +383,30 @@ func download(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[strin
 	filen := args[1]
 
 	i, err := strconv.Atoi(filen)
-	if err == nil {
-		if i < 0 {
-			str := "The number is negative... so bad..."
-			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
-			return nil
-		}
-		filen, err = getPathFromInt(uid, i)
-		if err != nil {
-			str := err.Error()
-			bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
-			return nil
-		}
+	if err != nil {
+		// Not number, that's impossible (reg expr)
+		return nil
+	}
+
+	if i < 0 {
+		// That's impossible too
+		str := "The number is negative... so bad..."
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
+	}
+	filen, err = getPathFromInt(uid, i)
+	if err != nil {
+		str := err.Error()
+		bot.Answer(msg).Text(str).ReplyToMessage(msg.ID).End()
+		return nil
 	}
 
 	path = getCleanPath(uid, filen)
 
 	fid, ok := bookid[path]
 	if ok {
-		nmsg := bot.Answer(msg).Document(fid).ReplyToMessage(msg.ID).End()
+		kh := tgbot.ReplyKeyboardHide{true, true}
+		nmsg := bot.Answer(msg).Document(fid).ReplyToMessage(msg.ID).KeyboardHide(kh).End()
 		if nmsg.Ok {
 			return nil
 		}
@@ -322,7 +421,7 @@ func download(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[strin
 	bot.Answer(msg).Text("Sending file: " + buildSafeSendPath(path)).End()
 	bot.Answer(msg).Action(tgbot.UploadDocument).End()
 	nmsg := bot.Answer(msg).Document(path).ReplyToMessage(msg.ID).End()
-	// fmt.Println(nmsg)
+
 	if nmsg.Ok && nmsg.Result.Document != nil {
 		res := *nmsg.Result.Document
 		bookid[path] = res.FileID
@@ -358,10 +457,10 @@ func readAllDb() {
 		value := string(iter.Value())
 		if strings.HasPrefix(key, "book:") {
 			bookid[key[5:]] = value
-			booksn += 1
+			booksn++
 		} else if strings.HasPrefix(key, "user:") {
 			usersallowed[key[5:]] = value == "true"
-			usersn += 1
+			usersn++
 		}
 	}
 	iter.Release()
@@ -373,7 +472,7 @@ func main() {
 	flag.StringVar(&base, "dir", "~/Libros", "working directory")
 	flag.StringVar(&dbdir, "db", "./book.db", "database file")
 	flag.StringVar(&passphrasestart, "pwd", "", "passphrase to start command")
-	flag.StringVar(&envdir, "env", "secret.env", "Environment file (secret.env)")
+	flag.StringVar(&envdir, "env", "secrets.env", "Environment file (secret.env)")
 	flag.Parse()
 	ebase, err := homedir.Expand(base)
 	if err != nil || ebase == "" || !isValidDir(ebase) {
@@ -381,6 +480,7 @@ func main() {
 		return
 	}
 	base = ebase
+
 	edbdir, err := homedir.Expand(dbdir)
 	if err != nil || edbdir == "" || !isValidDir(edbdir) {
 		fmt.Println("Database path not valid")
@@ -413,10 +513,19 @@ func main() {
 	bot := tgbot.New(token)
 
 	bot.SimpleCommandFn(`help`, help)
+	bot.SimpleCommandFn(`hidekeyboard`, hidekeyboard)
+	bot.SimpleCommandFn(`cd`, cdhome)
+	bot.SimpleCommandFn(`ls`, lskey)
+
+	bot.CommandFn(`cd (\d+|..)(?:.*)`, cdother) // cd with number or ..
+	bot.CommandFn(`ls (\d+)(?:.*)`, lsother)
+
 	bot.MultiCommandFn([]string{`start`, `start (.+)`}, start)
-	bot.MultiCommandFn([]string{`cd`, `cd ([\w/]+)`}, cd)
-	bot.MultiCommandFn([]string{`ls`, `ls ([\w/]+)`}, ls)
-	bot.MultiCommandFn([]string{`download ([\w/]+)`, `dw ([\w/]+)`, `dl ([\w]+)`}, download)
+	bot.MultiCommandFn([]string{
+		`download (\d+)(?:.*)`,
+		`dw (\d+)(?:.*)`,
+		`dl (\d+)(?:.*)`},
+		downloadkey)
 
 	bot.SimpleStart()
 }
