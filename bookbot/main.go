@@ -350,7 +350,7 @@ func buildListKey(path string) (string, []string) {
 		}
 	}
 	if path != base {
-		backd := filepath.Clean(filepath.Join(path, ".."))
+		backd := buildSafeSendPath(filepath.Clean(filepath.Join(path, "..")))
 		kf = append(kf, fmt.Sprintf(`/cd .. (%s)`, backd))
 	}
 	kf = append(kf, `/hidekeyboard`)
