@@ -12,5 +12,6 @@ SET PWD=
 @echo on
 
 
+SET ENVDIR=secrets.env
 
-call %BINARY% --dir=%BOOKSPATH% --db=%DBPATH% --pwd=%PWD%
+call %BINARY% --dir=%BOOKSPATH% --db=%DBPATH% --pwd=%PWD% --env=%ENVDIR%

@@ -39,10 +39,10 @@ var availableCommands = map[string]string{
 	"/dl <name|id>":       "Another shortcut to /download :)",
 }
 
-var bookid = map[string]string{}
+var bookid = make(map[string]string)
 
-var userpath = map[int]string{}
-var usersallowed = map[string]bool{}
+var userpath = make(map[int]string)
+var usersallowed = make(map[string]bool)
 
 var base = ""
 var dbdir = ""
@@ -348,8 +348,8 @@ func readAllDb() {
 	}
 	booksn := 0
 	usersn := 0
-	bookid = map[string]string{}
-	usersallowed = map[string]bool{}
+	bookid = make(map[string]string)
+	usersallowed = make(map[string]bool)
 	iter := db.NewIterator(nil, nil)
 	for iter.Next() {
 		// Remember that the contents of the returned slice should not be modified, and
@@ -369,32 +369,44 @@ func readAllDb() {
 }
 
 func main() {
+	var envdir string
 	flag.StringVar(&base, "dir", "~/Libros", "working directory")
 	flag.StringVar(&dbdir, "db", "./book.db", "database file")
 	flag.StringVar(&passphrasestart, "pwd", "", "passphrase to start command")
+	flag.StringVar(&envdir, "env", "secret.env", "Environment file (secret.env)")
 	flag.Parse()
 	ebase, err := homedir.Expand(base)
-	if err != nil || ebase == "" {
+	if err != nil || ebase == "" || !isValidDir(ebase) {
 		fmt.Println("Files path not valid")
 		return
 	}
 	base = ebase
 	edbdir, err := homedir.Expand(dbdir)
-	if err != nil || edbdir == "" {
+	if err != nil || edbdir == "" || !isValidDir(edbdir) {
 		fmt.Println("Database path not valid")
 		return
 	}
 	dbdir = edbdir
+
+	eenvdir, err := homedir.Expand(envdir)
+	if err != nil || eenvdir == "" || !isValidFile(eenvdir) {
+		fmt.Println("Environment path not valid")
+		return
+	}
+	envdir = eenvdir
+
 	fmt.Println("Base dir: " + base)
 	fmt.Println("DataBase dir: " + dbdir)
+	fmt.Println("Environment dir: " + envdir)
 	if passphrasestart == "" {
 		fmt.Println("Your bot is not password protected.")
 	} else {
 		fmt.Println("Your bot is password protected.\nThe users set the password with:\n/start <pwd>")
 	}
+
 	readAllDb()
 
-	godotenv.Load("secrets.env")
+	godotenv.Load(envdir)
 	// Add a file secrets.env, with the key like:
 	// TELEGRAM_KEY=yourtoken
 	token := os.Getenv("TELEGRAM_KEY")
