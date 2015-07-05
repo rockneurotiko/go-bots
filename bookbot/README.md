@@ -10,7 +10,7 @@ If you have any suggestion, issue, review or whatever, you can talk to me in [te
 
 If you like this project, you can vote my bot (it's password protected, but you it's a way of showing me how many people like this ^^): [vote here](https://telegram.me/storebot?start=b00kbot). Also, if you really really want to see my books, you can ask me in private.
 
-There is an example imagen of what can do ;-)
+There some images to see what can do ;-)
 
 ![alt screenshot](http://web.neurotiko.com/bookbot_screenshot2.png)
 
@@ -50,7 +50,8 @@ Parameters to configure the program (All the paths are OS-like you are using, in
   - DBPATH: Directory of the database
   - PWD: The password to protect the bot. It can be empty if you don't want to protect.
   - ENVDIR: The path where the secrets.env file are.
-  If you are in linux/unix, this configuration is even easier, just run: `./configure.sh all` and follow the instructions, then just change the BINARY in `run.sh` if you don't have linux 64bits.
+
+    If you are in linux/unix, this configuration is even easier, just run: `./configure.sh all` and follow the instructions, then just change the BINARY in `run.sh` if you don't have linux 64bits.
 
 
 That's all! Just run the file you edited! The program will show you the paths configured (if you see that it's not what you want, just stop it and modify the file) and what had been loaded from the database.
