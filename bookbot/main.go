@@ -84,7 +84,7 @@ func start(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]s
 
 func hidekeyboard(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	rkm := tgbot.ReplyKeyboardHide{HideKeyboard: true, Selective: true}
-	bot.Answer(msg).Text("Hidden!").KeyboardHide(rkm).End()
+	bot.Answer(msg).Text("Hidden!").ReplyToMessage(msg.ID).KeyboardHide(rkm).End()
 	return nil
 }
 
@@ -156,6 +156,14 @@ func isValidDir(p string) bool {
 	fi, err := os.Stat(p)
 	if err != nil {
 		return false
+	}
+	return fi.IsDir()
+}
+
+func isValidDbDir(p string) bool {
+	fi, err := os.Stat(p)
+	if err != nil {
+		return true
 	}
 	return fi.IsDir()
 }
@@ -332,7 +340,6 @@ func divideAndConquer(str string) []string {
 		str = str[4096:]
 	}
 	return newstr
-
 }
 
 func buildListKey(path string) (string, []string) {
@@ -482,7 +489,7 @@ func main() {
 	base = ebase
 
 	edbdir, err := homedir.Expand(dbdir)
-	if err != nil || edbdir == "" || !isValidDir(edbdir) {
+	if err != nil || edbdir == "" || !isValidDbDir(edbdir) {
 		fmt.Println("Database path not valid")
 		return
 	}
