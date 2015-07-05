@@ -12,12 +12,16 @@ If you like this project, you can vote my bot (it's password protected, but you 
 
 There is an example imagen of what can do ;-)
 
+![alt screenshot](http://web.neurotiko.com/bookbot_screenshot2.png)
+
 ![alt screenshot](http://web.neurotiko.com/bookbot_screenshot.png)
 
-(And yes, I have that book purchased :P)
+
+(Yeah, I have that books purchased :P)
 
 # Features!
 
+- Selective Keyboard to move/download even easier in mobile/desktop! (The selective is that every user will have his own keyboard in a chat, it won't be shared) [Thanks @Dimtar for the idea!]
 - Binary for all major platforms and architectures, just search yours in the bin directory :)
 - Configured with flags.
 - Protected by password if you want.
@@ -71,6 +75,7 @@ If you want to have it as a service, I'll tell you how to do it for Ubuntu (or o
   - `/ls`: Show the files and directories in the current path
   - `/ls <id>`: Show the files and directories in the path specified.
   - `/download <id>` | `/dl <id>` | `/dw <id>`: Download the file specified.
+  - `/hidekeyboard`: Hide the keyboard
 
 
 This is what you can send to @botfather when you use the `/setcommands`:
@@ -82,4 +87,5 @@ ls - Show current user directory content
 download - Download specified file
 dw - Shortcut to /download :)
 dl - Shourcut to /download :)
+hidekeyboard - Hide the keyboard
 ```
