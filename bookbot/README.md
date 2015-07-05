@@ -29,10 +29,11 @@ There is an example imagen of what can do ;-)
 
 If you don't like (or can't) to use the scrit I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code.
 
-Parameters to configure the program (All the paths are OS-like you are using, in linux with / in windows with \, but will expand ~ in both):
-- `--dir=~/path/to/your/files`: The path of the base directory of the files you want to share.
-- `--db=~/path/to/db`: The final path where will be saved the db.
-- `--pwd=password`: The password to protect who can execute commands and who don't. In the chats, if one enable it, it will be enabled for all the chat.
+Parameters to configure the program (All the paths are OS-like you are using, in unix with / in windows with \, but will expand ~ in both):
+- `--dir=~/path/to/your/files`: The path of the base directory of the files you want to share. Default: `~/Libros` (Yeah, I'm spanish <3)
+- `--db=~/path/to/db`: The final path where will be saved the db. Default: `book.db`
+- `--pwd=password`: The password to protect who can execute commands and who don't. In the chats, if one enable it, it will be enabled for all the chat. Default: No password
+- `--env=~/path/to/secrets.env`: The path where the secrets.env is stored.Default: `secrets.env`
 
 # Execute
 
@@ -44,11 +45,21 @@ Parameters to configure the program (All the paths are OS-like you are using, in
   - BOOKSPATH: Base directory of the files
   - DBPATH: Directory of the database
   - PWD: The password to protect the bot. It can be empty if you don't want to protect.
+  - ENVDIR: The path where the secrets.env file are.
+  If you are in linux/unix, this configuration is even easier, just run: `./configure.sh all` and follow the instructions, then just change the BINARY in `run.sh` if you don't have linux 64bits.
 
 
 That's all! Just run the file you edited! The program will show you the paths configured (if you see that it's not what you want, just stop it and modify the file) and what had been loaded from the database.
 
 I hope you that you enjoy it!
+
+# Deploy
+
+If you want to have it as a service, I'll tell you how to do it for Ubuntu (or other one that uses upstart), if you have other service manager, like systemctl, and do the file, please let me know :)
+
+- Run: `./configure all`, write absolute in everything paths (`/home/<user>/...`)
+- Copy `etc/bookbot.conf` to `/etc/init` (you can change the name from bookbot to what you want)
+- Start/Stop/Restart: `sudo start bookbot` / `sudo stop bookbot` / `sudo restart bookbot`
 
 # Other things
 
@@ -56,10 +67,10 @@ I hope you that you enjoy it!
   - `/start <pwd>`: Start the bot, use it when the bot have password
   - `/help`: Get the help.
   - `/cd`: Change your relative path to $HOME (the base)
-  - `/cd <name|id>`: Change your relative path to the specified (I recommend use the number listed)
+  - `/cd <id>`: Change your relative path to the specified (I recommend use the number listed)
   - `/ls`: Show the files and directories in the current path
-  - `/ls <name|id>`: Show the files and directories in the path specified.
-  - `/download <name|id>` | `/dl <name|id>` | `/dw <name|id>`: Download the file specified.
+  - `/ls <id>`: Show the files and directories in the path specified.
+  - `/download <id>` | `/dl <id>` | `/dw <id>`: Download the file specified.
 
 
 This is what you can send to @botfather when you use the `/setcommands`:
