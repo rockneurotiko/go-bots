@@ -9,3 +9,4 @@ You can talk to me in [telegram](https://telegram.me/rock_neurotiko)
 # Bots (In any order)
 
 - [Book Bot (File Share Bot)](https://github.com/rockneurotiko/go-bots/tree/master/bookbot) - This is a bot that makes easy to share a directory from your disk.
+- [RSS Bot](https://github.com/rockneurotiko/go-bots/tree/master/rssbot) -  This is a bot to manage RSS subscription with notifications.
