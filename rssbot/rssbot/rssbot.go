@@ -27,10 +27,14 @@ import (
 // DB keys like:
 // user:<id>
 // user:<id>:<url>
+// user:<id>:settings:<prop>
 // rss:<url>
 // rss:<url>:<id>
 var dbdir = ""
 var dblock = &sync.Mutex{}
+
+// Properties for settings:
+// Send or not images.
 
 // Default time one day, clean every 5 minutes
 // upgrades: Store users too
@@ -47,7 +51,7 @@ var cachelock = &sync.Mutex{}
 var availableCommands = map[string]string{
 	"/start":       "Start the bot",
 	"/help":        "Show this help",
-	"/sub <url>":   "Subscribe to that RSS",
+	"/sub <url>":   "Subscribe to that RSS, the URL need to have 'http://' or 'https://'",
 	"/list":        "Return your RSS subscriptions",
 	"/delete <id>": "Remove your subscription of the RSS <id> (an integer)",
 	"/rm <id>":     "Remove your subscription of the RSS <id> (an integer)",
@@ -56,7 +60,9 @@ var availableCommands = map[string]string{
 var helptoptext = `This is the available commands:`
 var helpbottomtext = `Please, if you like and use this bot, consider vote in https://telegram.me/storebot?start=RSSNewsBot
 
-Also you have any suggestion or issue you can contact with the main developer of this bot: @rock_neurotiko`
+Also you have any suggestion or issue you can contact with the main developer of this bot: @rock_neurotiko
+
+All the code of this bot is Open Source, you can see it or contribute in https://github.com/rockneurotiko/go-bots/tree/master/rssbot`
 
 func buildHelp() string {
 	var buffer bytes.Buffer
@@ -78,6 +84,7 @@ func buildHelp() string {
 }
 
 func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	fmt.Printf("%d asked for help\n", msg.Chat.ID)
 	bot.Answer(msg).Text(buildHelp()).ReplyToMessage(msg.ID).End()
 	return nil
 }
@@ -90,6 +97,8 @@ func remove(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]
 	if e != nil {
 		return nil
 	}
+
+	fmt.Printf("%d asked to remove %d\n", msg.Chat.ID, i)
 
 	k, _, err := getNthDb(key, i)
 	if err != nil {
@@ -110,11 +119,13 @@ func subs(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		bot.Answer(msg).Text("Usage of sub command:\n/sub <RSS_url>").ReplyToMessage(msg.ID).End()
 		return nil
 	}
+	fmt.Printf("%d asked to subscribe to %s\n", msg.Chat.ID, args[1])
 	go botPollSubscribe(bot, msg, args[1], 5, charsetReader)
 	return nil
 }
 
 func list(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	fmt.Printf("%d asked for his list.\n", msg.Chat.ID)
 	id := fmt.Sprintf("%d", msg.Chat.ID)
 	userkey := buildKey("user", id, "")
 	allusern := loadFromDbPrefix(userkey + ":")
@@ -141,10 +152,11 @@ func readAllDbRss(bot tgbot.TgBot) {
 		uri := strings.Join(splitted[1:], ":")
 
 		go func(uri string, firsttime bool) {
+			// Add a random wait for every url?
 			feed := rss.New(5, true, chanHandler, botItemHandler(bot, true))
 			for {
 				if err := feed.Fetch(uri, charsetReader); err != nil {
-					fmt.Fprintf(os.Stderr, "[e] %s: %s", uri, err)
+					fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
 					return
 				}
 				if firsttime {
@@ -401,12 +413,6 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 	}
 }
 
-// NewStruct represent a "new" document
-type NewStruct struct {
-	Text   string
-	Images []string
-}
-
 func botItemHandler(bot tgbot.TgBot, firsttime bool) rss.ItemHandlerFunc {
 	return func(feed *rss.Feed, ch *rss.Channel, newitems []*rss.Item) {
 		// fmt.Printf("%d new item(s) in %s, firsttime: %v\n", len(newitems), feed.Url, firsttime)
@@ -416,17 +422,62 @@ func botItemHandler(bot tgbot.TgBot, firsttime bool) rss.ItemHandlerFunc {
 			return
 		}
 
-		newst := extractNews(newitems)
+		newst := ExtractNews(newitems)
 
 		sendToAll(bot, feed.Url, newst)
 	}
 }
 
-func extractNews(newitems []*rss.Item) []NewStruct {
+// NewStruct represent a "new" document
+type NewStruct struct {
+	Text        string
+	Images      []string
+	Title       string
+	Description string
+	Date        string
+	Author      string
+	LinksText   string
+	Links       []string
+}
+
+// BuildText from the data
+func (ns *NewStruct) BuildText() string {
+	if ns.Text != "" {
+		return ns.Text
+	}
+
+	headerlinks := `[`
+	for _, l := range ns.Links {
+		headerlinks = fmt.Sprintf("%s %s", headerlinks, l)
+	}
+	headerlinks = headerlinks + ` ]`
+
+	descr := ns.Description
+	if descr != "" {
+		descr = "\n" + descr + "\n---------"
+	}
+	by := ns.Author
+	if by == "" {
+		by = "No author defined."
+	}
+
+	ns.Text = fmt.Sprintf(`%s
+---------
+%s
+---------%s
+By: %s
+Date: %s
+---------`, headerlinks, ns.Title, descr, by, ns.Date)
+
+	return ns.Text
+}
+
+func ExtractNews(newitems []*rss.Item) []NewStruct {
 	var newst []NewStruct
 	for _, new := range newitems {
 		// init
-		linkstr := ""
+		// linkstr := ""
+		linkslist := make([]string, 0)
 		var images []string
 		descrip := ""
 
@@ -435,7 +486,8 @@ func extractNews(newitems []*rss.Item) []NewStruct {
 			links := new.Links
 			for _, l := range links {
 				l2 := *l
-				linkstr += fmt.Sprintf(" - (%s)", l2.Href)
+				linkslist = append(linkslist, l2.Href)
+				// linkstr += fmt.Sprintf(" - (%s)", l2.Href)
 			}
 		}
 
@@ -455,8 +507,10 @@ func extractNews(newitems []*rss.Item) []NewStruct {
 
 		new.Title, descrip = analyzeTitleDescrip(new.Title, descrip)
 
-		itemstr := fmt.Sprintf("%s%s\n%s", new.Title, linkstr, descrip)
-		newst = append(newst, NewStruct{itemstr, images})
+		// itemstr := fmt.Sprintf("%s%s\n%s", new.Title, linkstr, descrip)
+		newst = append(newst, NewStruct{"", images, new.Title, descrip, new.PubDate, new.Author.Name, "", linkslist})
+
+		// newst = append(newst, NewStruct{itemstr, images})
 	}
 	return newst
 }
@@ -527,7 +581,7 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 		bot.Send(i).Text(fmt.Sprintf("%d new items for: %s", len(newst), uri))
 		for _, n := range newst {
 			// Send text
-			longSend(bot, i, n.Text)
+			longSend(bot, i, n.BuildText())
 			// Then images :)
 			for _, im := range n.Images {
 				// Search in cache
