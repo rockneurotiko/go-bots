@@ -24,10 +24,15 @@ import (
 	"gopkg.in/fatih/set.v0"                    // Set data structure
 )
 
+type User struct {
+	id      int
+	Options OptionsUser
+}
+
 // DB keys like:
 // user:<id>
 // user:<id>:<url>
-// user:<id>:settings:<prop>
+// settings:<id>:<prop>
 // rss:<url>
 // rss:<url>:<id>
 var dbdir = ""
@@ -39,7 +44,10 @@ var dblock = &sync.Mutex{}
 // Default time one day, clean every 5 minutes
 // upgrades: Store users too
 var rsscache = cache.New(60*time.Minute, 5*time.Minute)
-var cachelock = &sync.Mutex{}
+var cachelock = &sync.RWMutex{}
+
+var opscache = make(map[int]OptionsUser)
+var opslock = &sync.RWMutex{}
 
 // start - Start the bot
 // help - Show this help
@@ -318,8 +326,8 @@ func saveAllValues(uri string, id string) {
 
 func checkCache(uri string, id string) bool {
 	urlkey := buildKey("rss", uri, "")
-	cachelock.Lock()
-	defer cachelock.Unlock()
+	cachelock.RLock()
+	defer cachelock.RUnlock()
 	_, ok := rsscache.Get(urlkey)
 	if ok {
 		saveAllValues(uri, id)
@@ -543,20 +551,59 @@ func downloadImage(url string) (img image.Image, err error) {
 	return
 }
 
+type OptionsUser struct {
+	SendImage bool
+}
+
+func SaveSettingsToUser(i int, nops OptionsUser) {
+	opslock.Lock()
+	opscache[i] = nops
+	opslock.Unlock()
+	id := fmt.Sprintf("%d", i)
+	opsmap := make(map[string]string)
+	basek := buildKey("settings", id, "")
+
+	opsmap[buildKey(basek, "send-image", "")] = fmt.Sprintf("%v", nops.SendImage)
+	saveInDb(opsmap)
+}
+
+func LoadSettingsFromUser(i int) OptionsUser {
+	id := fmt.Sprintf("%d", i)
+	opslock.RLock()
+	x, found := opscache[i]
+	opslock.RUnlock()
+	if found {
+		return x
+	}
+
+	opsmap := make(map[string]string)
+	basek := buildKey("settings", id, "")
+	ops := []string{"send-image"}
+	for _, k := range ops {
+		key := buildKey(basek, k, "")
+		value := loadFromDb(key)
+		opsmap[k] = value
+	}
+	finalops := OptionsUser{
+		SendImage: opsmap["send-image"] == "true",
+	}
+	return finalops
+}
+
 func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 	var allones []int
+	// useroptions := make(map[int]OptionsUser)
 	// In cache?
-	cachelock.Lock()
-	defer cachelock.Unlock()
-	if x, found := rsscache.Get(uri); found {
+	cachelock.RLock()
+	x, found := rsscache.Get(uri)
+	cachelock.RUnlock()
+	if found {
 		switch val := x.(type) {
 		case *set.Set:
 			allones = set.IntSlice(val)
 		default:
 			fmt.Println("Error in type in rsscache: ", val)
 		}
-		// foo := x.(*set.Set)
-		// allones = set.IntSlice(foo)
 	} else {
 		// Search in db and send
 		urikey := buildKey("rss", uri, "")
@@ -571,17 +618,25 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 				users.Add(i)
 			}
 		}
+		cachelock.Lock()
 		rsscache.Set(uri, users, cache.DefaultExpiration)
+		cachelock.Unlock()
 	}
 
 	// Right now we are doing: for all user, send every new.
 	// Maybe do it in the other way? For every new, send to all
 	imagesids := make(map[string]string)
 	for _, i := range allones {
-		bot.Send(i).Text(fmt.Sprintf("%d new items for: %s", len(newst), uri))
+		useroptions := LoadSettingsFromUser(i)
+		// bot.Send(i).Text(fmt.Sprintf("%d new items for: %s", len(newst), uri)).End()
 		for _, n := range newst {
 			// Send text
 			longSend(bot, i, n.BuildText())
+
+			// handle options!
+			if !useroptions.SendImage {
+				continue
+			}
 			// Then images :)
 			for _, im := range n.Images {
 				// Search in cache
