@@ -56,8 +56,8 @@ func main() {
 	godotenv.Load(envdir)
 	// TELEGRAM_TOKEN=yourtoken
 	token := os.Getenv("TELEGRAM_TOKEN")
-
-	bot := rssbot.BuildBot(dbdir, token)
+	notify := os.Getenv("NOTIFY") == "true"
+	bot := rssbot.BuildBot(dbdir, token, notify)
 
 	if deploy != "" {
 		bot.ServerStart(deploy, "/webhook")

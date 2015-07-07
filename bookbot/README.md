@@ -22,7 +22,7 @@ There some images to see what can do ;-)
 # Features!
 
 - Selective Keyboard to move/download even easier in mobile/desktop! (The selective is that every user will have his own keyboard in a chat, it won't be shared) [Thanks @Dimtar for the idea!]
-- Binary for all major platforms and architectures, just search yours in the bin directory :)
+- Binary for all major platforms and architectures, just search yours in the bin directory :) (The binaries are in the [go-bots-binaries project](https://www.github.com/rockneurotiko/go-bots-binaries))
 - Configured with flags.
 - Protected by password if you want.
   If you have sensible files, or you don't want that anyone can use your bot, you can set a password that the users/groups will have to set in the `/start` command. (`/start <pwd>`)
@@ -31,7 +31,7 @@ There some images to see what can do ;-)
 
 # Configure
 
-If you don't like (or can't) to use the scrit I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code.
+If you don't like (or can't) to use the scrit I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code. (The binaries are in the [go-bots-binaries project](https://www.github.com/rockneurotiko/go-bots-binaries))
 
 Parameters to configure the program (All the paths are OS-like you are using, in unix with / in windows with \, but will expand ~ in both):
 - `--dir=~/path/to/your/files`: The path of the base directory of the files you want to share. Default: `~/Libros` (Yeah, I'm spanish <3)

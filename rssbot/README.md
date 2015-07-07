@@ -13,14 +13,14 @@ If you like this project, you can vote my bot [here](https://telegram.me/storebo
 
 # Features!
 
-- Binary for all major platforms and architectures, just search yours in the bin directory :)
+- Binary for all major platforms and architectures, just search yours in the bin directory :) (the binaries are in the [go-bots-binaries project](https://www.github.com/rockneurotiko/go-bots-binaries))
 - Configured with flags.
 - Database in disk, the state will be saved between runs.
 - Caches
 
 # Configure
 
-If you don't like (or can't) to use the scrit I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code.
+If you don't like (or can't) to use the scrit I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code. (The binaries are in [go-bots-binaries project](https://www.github.com/rockneurotiko/go-bots-binaries))
 
 Parameters to configure the program (All the paths are OS-like you are using, in unix with / in windows with \, but will expand ~ in both):
 - `-db=~/path/to/db`: The final path where will be saved the db. Default: `book.db`
@@ -65,3 +65,12 @@ list - Return your RSS subscriptions
 delete - Remove your subscription of the RSS <id> (an integer)
 rm - Remove your subscription of the RSS <id> (an integer)
 ```
+
+
+# Things TODO
+
+(This is just to me, I usually forget the things)
+
+- [ ] Privilege commands?
+- [ ] Show the current preferences.
+- [ ] "Do not disturb" in some hours preference
