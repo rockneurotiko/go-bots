@@ -32,7 +32,8 @@ func BuildBot(dbd string, token string, notify bool) *tgbot.TgBot {
 		SimpleCommandFn(`list`, list).
 		SimpleCommandFn(`help`, help).
 		SimpleCommandFn(`start`, help).
-		SimpleCommandFn(`cancel`, returnErrorMsg)
+		SimpleCommandFn(`cancel`, returnErrorMsg).
+		SimpleCommandFn(`preference ?.*`, preferenceFail)
 
 	bot.StartChain().
 		CommandFn(`preference (image)`, changePreference).
@@ -196,6 +197,13 @@ func cancelPreference(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	return nil
 }
 
+func preferenceFail(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	send := `You tried to execute the preference command, but you didn't executed well, right now, the preferences are:
+/preference image`
+	bot.Answer(msg).Text(send).ReplyToMessage(msg.ID).End()
+	return nil
+}
+
 func returnErrorMsg(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	messages := map[string]string{
 		"/cancel": "You are not in a process that can be cancellable.",
@@ -268,12 +276,14 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 
 	firsttime := true
 	// Adding new RSS
-	feed := rss.New(timeout, true, chanHandler, botItemHandler(bot, true))
+	feed := rss.New(timeout, true, chanHandler, botItemHandler(bot, firsttime))
 
 	for {
 		if err := feed.Fetch(uri, cr); err != nil {
 			fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-			bot.Answer(msg).Text(fmt.Sprintf("Bad RSS: %s, maybe the URL is bad.\nError msg: %s", uri, err.Error())).ReplyToMessage(msg.ID).End()
+			if firsttime {
+				bot.Answer(msg).Text(fmt.Sprintf("Bad RSS: %s, maybe the URL is bad.\nError msg: %s", uri, err.Error())).ReplyToMessage(msg.ID).End()
+			}
 			return
 		}
 		if firsttime {

@@ -31,7 +31,7 @@ There some images to see what can do ;-)
 
 # Configure
 
-If you don't like (or can't) to use the scrit I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code. (The binaries are in the [go-bots-binaries project](https://www.github.com/rockneurotiko/go-bots-binaries))
+If you don't like (or can't) to use the script I provide to execute (`run.sh` or `run.cmd`) you can execute in the terminal like any program. You can execute the binary, or the go code. (The binaries are in the [go-bots-binaries project](https://www.github.com/rockneurotiko/go-bots-binaries))
 
 Parameters to configure the program (All the paths are OS-like you are using, in unix with / in windows with \, but will expand ~ in both):
 - `--dir=~/path/to/your/files`: The path of the base directory of the files you want to share. Default: `~/Libros` (Yeah, I'm spanish <3)
