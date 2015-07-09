@@ -71,6 +71,7 @@ rm - Remove your subscription of the RSS <id> (an integer)
 
 (This is just to me, I usually forget the things)
 
+- [ ] Use redis
 - [ ] Privilege commands?
 - [ ] Show the current preferences.
 - [ ] "Do not disturb" in some hours preference

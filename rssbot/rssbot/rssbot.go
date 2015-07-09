@@ -19,6 +19,10 @@ import (
 	"gopkg.in/fatih/set.v0"              // Set data structure
 )
 
+const (
+	MAX_RETRIES = 5
+)
+
 // BuildBot ...
 func BuildBot(dbd string, token string, notify bool) *tgbot.TgBot {
 	autodb = dbSync{
@@ -125,8 +129,8 @@ func getKeysAndSort(dic map[string]string) []string {
 func readAllDbRss(bot tgbot.TgBot) {
 	allrss := loadFromDbPrefix("rss:")
 	nmax := len(allrss)
-	blocks := 120.0 // Every half second in a minute, 120 blocks
-	nseconds := 60 / float64(blocks)
+	blocks := 240.0        // Now every second in 4 mins. Every half second in a minute, 120 blocks
+	nseconds := float64(1) //60 / float64(blocks)
 	module := int(math.Ceil(float64(nmax) / blocks))
 	i := 0
 	for urlkey := range allrss {
@@ -136,27 +140,33 @@ func readAllDbRss(bot tgbot.TgBot) {
 		}
 		uri := strings.Join(splitted[1:], ":")
 
-		i++
 		j := i
+		i++
 		go func(uri string, firsttime bool) {
+			n_errors := 0
+			feed := rss.New(5, true, chanHandler, botItemHandler(bot, firsttime))
+
 			// Start calcule by groups, calculate how many sleep before execute
 			timeofsleep := float64(int(j/module)) * nseconds
 			start := time.Now()
 			<-time.After(time.Duration(int(timeofsleep*1000)) * time.Millisecond)
-			fmt.Printf("%d started after %v seconds\n", j, time.Since(start))
+			fmt.Printf("%d (%s) started after %v seconds\n", j, uri, time.Since(start))
 
-			feed := rss.New(5, true, chanHandler, botItemHandler(bot, firsttime))
 			for {
 				if err := feed.Fetch(uri, charsetReader); err != nil {
 					fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-					return
+					if isAffordableNetworkError(err) && n_errors < MAX_RETRIES {
+						n_errors++
+						<-time.After(time.Duration(10) * time.Second)
+						continue
+					} else {
+						return
+					}
 				}
 				if firsttime {
 					firsttime = false
 					setRssValue(urlkey, "true")
-					// cachelock.Lock()
-					// rsscache.Set(urlkey, "true", cache.DefaultExpiration)
-					// cachelock.Unlock()
+
 				}
 				// Usually every 5 mins
 				<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
@@ -275,16 +285,25 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 	}
 
 	firsttime := true
+	n_errors := 0
 	// Adding new RSS
 	feed := rss.New(timeout, true, chanHandler, botItemHandler(bot, firsttime))
 
 	for {
 		if err := feed.Fetch(uri, cr); err != nil {
 			fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-			if firsttime {
-				bot.Answer(msg).Text(fmt.Sprintf("Bad RSS: %s, maybe the URL is bad.\nError msg: %s", uri, err.Error())).ReplyToMessage(msg.ID).End()
+
+			if isAffordableNetworkError(err) && n_errors < MAX_RETRIES {
+				fmt.Println("Retrying")
+				n_errors++
+				<-time.After(time.Duration(10) * time.Second)
+				continue
+			} else {
+				if firsttime {
+					bot.Answer(msg).Text(fmt.Sprintf("Bad RSS: %s, maybe the URL is bad.\nError msg: %s", uri, err.Error())).ReplyToMessage(msg.ID).End()
+				}
+				return
 			}
-			return
 		}
 		if firsttime {
 			saveAllValues(uri, id)

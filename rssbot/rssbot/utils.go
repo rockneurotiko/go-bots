@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 
 	rss "github.com/jteeuwen/go-pkg-rss" // Subscribe to RSS
 	"github.com/rockneurotiko/go-tgbot"
@@ -97,6 +99,28 @@ func getAllActiveUsers() []int {
 		}
 	}
 	return res
+}
+
+func isAffordableNetworkError(err error) bool {
+	if netError, ok := err.(net.Error); ok && (netError.Timeout() || netError.Temporary()) {
+		println("Timeout")
+		return true
+	}
+	switch t := err.(type) {
+	case *net.OpError:
+		if t.Op == "dial" {
+			println("Unknown host")
+		} else if t.Op == "read" {
+			println("Connection refused")
+		}
+
+	case syscall.Errno:
+		if t == syscall.ECONNREFUSED {
+			println("Connection refused")
+		}
+	}
+
+	return false
 }
 
 func getStats() (chats *set.Set, users *set.Set, rss *set.Set, nperuser map[string]int, subscribed map[string]int) {
