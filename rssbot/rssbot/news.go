@@ -78,12 +78,18 @@ func ExtractNews(newitems []*rss.Item) []NewStruct {
 		doc, err := goquery.NewDocumentFromReader(read)
 
 		if err == nil {
-			doc.Find("img[src]").Each(func(i int, s *goquery.Selection) {
+			doc.Find("img").Each(func(i int, s *goquery.Selection) {
 				val, ok := s.Attr("src")
 				if ok {
 					images = append(images, val)
 				}
 			})
+			// doc.Find("img[src]").Each(func(i int, s *goquery.Selection) {
+			// 	val, ok := s.Attr("src")
+			// 	if ok {
+			// 		images = append(images, val)
+			// 	}
+			// })
 			descrip = doc.Text()
 		}
 

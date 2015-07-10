@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/gif"
+	_ "image/png"
+	"io"
+	"io/ioutil"
 	"math"
+	"mime"
 	"net/http"
 	"os"
 	"sort"
@@ -13,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	_ "code.google.com/p/vp8-go/webp"
 	rss "github.com/jteeuwen/go-pkg-rss" // Subscribe to RSS
 	"github.com/jteeuwen/go-pkg-xmlx"    // Dependency of RSS
 	"github.com/rockneurotiko/go-tgbot"  // Telegram Bot Library :)
@@ -335,14 +341,36 @@ func botItemHandler(bot tgbot.TgBot, firsttime bool) rss.ItemHandlerFunc {
 	}
 }
 
-func downloadImage(url string) (img image.Image, err error) {
+// Guess image format from gif/jpeg/png/webp
+func guessImageFormat(r io.Reader) (format string, err error) {
+	_, format, err = image.DecodeConfig(r)
+	return
+}
+
+// Guess image mime types from gif/jpeg/png/webp
+func guessImageMimeTypes(r io.Reader) string {
+	format, err := guessImageFormat(r)
+	if format == "" || err != nil {
+		return ""
+	}
+	return mime.TypeByExtension("." + format)
+}
+
+func downloadImage(url string) (img interface{}, mimet string, err error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 
-	img, _, err = image.Decode(resp.Body)
+	byts, _ := ioutil.ReadAll(resp.Body)
+
+	img, mimet, err = image.Decode(bytes.NewBuffer(byts))
+
+	if strings.Contains(mimet, "gif") {
+		img, err = gif.DecodeAll(bytes.NewBuffer(byts))
+	}
+
 	if err != nil {
 		return
 	}
@@ -380,10 +408,12 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 
 	// Right now we are doing: for all user, send every new.
 	// Maybe do it in the other way? For every new, send to all
+	// Refactor this please ^^
 	imagesids := make(map[string]string)
+	gifsids := make(map[string]string)
 	for _, i := range allones {
 		useroptions := loadSettingsFromUser(i)
-		// bot.Send(i).Text(fmt.Sprintf("%d new items for: %s", len(newst), uri)).End()
+
 		for _, n := range newst {
 			// Send text
 			longSend(bot, i, n.BuildText())
@@ -392,6 +422,7 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 			if !useroptions.SendImage {
 				continue
 			}
+
 			// Then images :)
 			for _, im := range n.Images {
 				// Search in cache
@@ -403,17 +434,34 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 					continue
 				}
 
+				id, ok = gifsids[im]
+				if ok && id != "" {
+					bot.Send(i).Photo(id).End()
+					continue
+				} else if ok && id == "" {
+					continue
+				}
+
 				// If don't in cache, download, send and write in cache :)
-				img, err := downloadImage(im)
+				img, mimet, err := downloadImage(im)
+
 				if err != nil {
 					imagesids[im] = ""
 					continue
 				}
+				if strings.Contains(mimet, "gif") || strings.Contains(mimet, "webp") {
+					sended := bot.Send(i).Document(img).End()
+					if sended.Ok && sended.Result.Document != nil {
+						newimg := *sended.Result.Document
+						gifsids[im] = newimg.FileID
+					}
 
-				sended := bot.Send(i).Photo(img).End()
-				if sended.Ok && sended.Result.Photo != nil && len(*sended.Result.Photo) > 0 {
-					newimg := *sended.Result.Photo
-					imagesids[im] = newimg[0].FileID
+				} else {
+					sended := bot.Send(i).Photo(img).End()
+					if sended.Ok && sended.Result.Photo != nil && len(*sended.Result.Photo) > 0 {
+						newimg := *sended.Result.Photo
+						imagesids[im] = newimg[0].FileID
+					}
 				}
 			}
 		}
