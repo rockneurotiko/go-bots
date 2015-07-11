@@ -153,7 +153,7 @@ func readAllDbRss(bot tgbot.TgBot) {
 			feed := rss.New(5, true, chanHandler, botItemHandler(bot, firsttime))
 
 			// Start calcule by groups, calculate how many sleep before execute
-			timeofsleep := float64(int(j/module)) * nseconds
+			timeofsleep := math.Mod(j, blocks) * nseconds // float64(int(j/module)) * nseconds
 			start := time.Now()
 			<-time.After(time.Duration(int(timeofsleep*1000)) * time.Millisecond)
 			fmt.Printf("%d (%s) started after %v seconds\n", j, uri, time.Since(start))

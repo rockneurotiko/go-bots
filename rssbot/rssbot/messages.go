@@ -6,9 +6,11 @@ import (
 	"sort"
 )
 
-const (
-	version       = "0.1.0"
-	lastchangelog = `- Like you are seeing, now I can send messages with the new things!
+/*
+Changelogs:
+
+0.1.0:
+- Like you are seeing, now I can send messages with the new things!
 - The sub, rm and delete command now handle multiple spaces correctly and in rm/delete you can write with a last ) ex: "/rm 1)"
 - Now I'm able to handle preferences, right now I only have one: "image" preference, that set if you want to receive the images from the news or don't (don't by default, you will have to enable it)
 Use:
@@ -17,7 +19,14 @@ Use:
 
 /enable or /disable -> Done! :)
 
-You can cancel this process with /cancel`
+You can cancel this process with /cancel
+
+*/
+
+const (
+	version       = "0.2.0"
+	lastchangelog = `- Now I support sending more type of media, jpg, png, wepb and gifs.
+- `
 )
 
 var messageUpdate = `Hi!
@@ -44,7 +53,10 @@ var availableCommands = map[string]string{
 	"/preference (image)": "Change the preference",
 }
 
-var helptoptext = `This is the available commands:`
+var helptoptext = `Hi! I'm the RSS Bot, with me you can subscribe to the RSS of your favourites webpages, and I'll send you the updates, when they update their RSS.
+Please, before downvote me, I only work with RSS, not with webpages, you should search for an icon similar to my avatar. And, if you have any trouble, before go to downvote, talk to me in @rock_neurotiko, maybe it's a bug and I can fix it :-)
+
+This is the available commands:`
 var helpbottomtext = fmt.Sprintf(`Please, if you like and use this bot, consider vote in https://telegram.me/storebot?start=RSSNewsBot
 
 Also you have any suggestion or issue you can contact with the main developer of this bot: @rock_neurotiko

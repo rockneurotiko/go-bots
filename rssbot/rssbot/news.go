@@ -74,7 +74,12 @@ func ExtractNews(newitems []*rss.Item) []NewStruct {
 		}
 
 		// Read HTML
-		read := strings.NewReader(new.Description)
+		content := new.Description
+		if new.Content != nil {
+			content = new.Content.Text
+		}
+		// finaltext := fmt.Sprintf("%s<br>%s", new.Description, content)
+		read := strings.NewReader(content)
 		doc, err := goquery.NewDocumentFromReader(read)
 
 		if err == nil {
@@ -84,13 +89,19 @@ func ExtractNews(newitems []*rss.Item) []NewStruct {
 					images = append(images, val)
 				}
 			})
-			// doc.Find("img[src]").Each(func(i int, s *goquery.Selection) {
-			// 	val, ok := s.Attr("src")
-			// 	if ok {
-			// 		images = append(images, val)
-			// 	}
-			// })
+
 			descrip = doc.Text()
+
+			doc2, err2 := goquery.NewDocumentFromReader(strings.NewReader(descrip))
+			if err2 == nil {
+				doc2.Find("img").Each(func(i int, s *goquery.Selection) {
+					val, ok := s.Attr("src")
+					if ok {
+						images = append(images, val)
+					}
+				})
+				descrip = doc2.Text()
+			}
 		}
 
 		new.Title, descrip = analyzeTitleDescrip(new.Title, descrip)
