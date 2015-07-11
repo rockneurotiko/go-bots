@@ -134,10 +134,10 @@ func getKeysAndSort(dic map[string]string) []string {
 
 func readAllDbRss(bot tgbot.TgBot) {
 	allrss := loadFromDbPrefix("rss:")
-	nmax := len(allrss)
+	// nmax := len(allrss)
 	blocks := 240.0        // Now every second in 4 mins. Every half second in a minute, 120 blocks
 	nseconds := float64(1) //60 / float64(blocks)
-	module := int(math.Ceil(float64(nmax) / blocks))
+	// module := int(math.Ceil(float64(nmax) / blocks))
 	i := 0
 	for urlkey := range allrss {
 		splitted := strings.Split(urlkey, ":")
@@ -153,7 +153,7 @@ func readAllDbRss(bot tgbot.TgBot) {
 			feed := rss.New(5, true, chanHandler, botItemHandler(bot, firsttime))
 
 			// Start calcule by groups, calculate how many sleep before execute
-			timeofsleep := math.Mod(j, blocks) * nseconds // float64(int(j/module)) * nseconds
+			timeofsleep := math.Mod(float64(j), blocks) * nseconds // float64(int(j/module)) * nseconds
 			start := time.Now()
 			<-time.After(time.Duration(int(timeofsleep*1000)) * time.Millisecond)
 			fmt.Printf("%d (%s) started after %v seconds\n", j, uri, time.Since(start))
