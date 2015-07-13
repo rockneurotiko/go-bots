@@ -160,15 +160,20 @@ func readAllDbRss(bot tgbot.TgBot) {
 
 			for {
 				if err := feed.Fetch(uri, charsetReader); err != nil {
-					fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-					if isAffordableNetworkError(err) && n_errors < MAX_RETRIES {
+					// fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
+					// if isAffordableNetworkError(err) && n_errors < MAX_RETRIES {
+					if n_errors < MAX_RETRIES {
+						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 						n_errors++
-						<-time.After(time.Duration(10) * time.Second)
+						<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
 						continue
 					} else {
+						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 						return
 					}
 				}
+				n_errors = 0
+
 				if firsttime {
 					firsttime = false
 					setRssValue(urlkey, "true")
@@ -297,10 +302,9 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 
 	for {
 		if err := feed.Fetch(uri, cr); err != nil {
-			fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-
-			if isAffordableNetworkError(err) && n_errors < MAX_RETRIES {
-				fmt.Println("Retrying")
+			// fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
+			if !firsttime && n_errors < MAX_RETRIES {
+				fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 				n_errors++
 				<-time.After(time.Duration(10) * time.Second)
 				continue
@@ -311,13 +315,13 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 				return
 			}
 		}
+
+		n_errors = 0
 		if firsttime {
 			saveAllValues(uri, id)
 			appendToCacheUsers(uri, msg.Chat.ID)
 			setRssValue(buildKey("rss", uri, ""), "true")
-			// cachelock.Lock()
-			// rsscache.Set(buildKey("rss", uri, ""), "true", cache.DefaultExpiration)
-			// cachelock.Unlock()
+
 			firsttime = false
 			bot.Answer(msg).Text(fmt.Sprintf("You have been subscribed to %s", uri)).ReplyToMessage(msg.ID).End()
 		}
