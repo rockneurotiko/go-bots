@@ -53,6 +53,8 @@ func BuildBot(dbd string, token string, notify bool) *tgbot.TgBot {
 
 	bot.DefaultDisableWebpagePreview(true)
 
+	removeUnused()
+
 	// Start all saved RSS
 	readAllDbRss(*bot)
 

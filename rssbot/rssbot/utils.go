@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	rss "github.com/jteeuwen/go-pkg-rss" // Subscribe to RSS
-	"github.com/rockneurotiko/go-tgbot"
+	rss "github.com/jteeuwen/go-pkg-rss"
+	"github.com/rockneurotiko/go-tgbot" // Subscribe to RSS
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -88,7 +88,7 @@ Changelog:
 
 func getAllActiveUsers() []int {
 	var res []int
-	_, _, _, users, _ := getStats()
+	_, _, _, _, users, _, _ := getStats()
 	for id, n := range users {
 		if n <= 0 {
 			continue
@@ -123,10 +123,25 @@ func isAffordableNetworkError(err error) bool {
 	return false
 }
 
-func getStats() (chats *set.Set, users *set.Set, rss *set.Set, nperuser map[string]int, subscribed map[string]int) {
+func removeUnused() {
+	_, _, rss, used, _, _, unus := getStats()
+	fmt.Printf("%v\n", rss.Size())
+	fmt.Printf("%v\n", used.Size())
+	fmt.Printf("%v\n", unus.Size())
+	newunus := make([]string, 0)
+	for _, ur := range set.StringSlice(unus) {
+		newunus = append(newunus, fmt.Sprintf("rss:%s", ur))
+	}
+	multiDeleteDb(newunus)
+}
+
+func getStats() (chats *set.Set, users *set.Set, rss *set.Set, used *set.Set, nperuser map[string]int, subscribed map[string]int, unused *set.Set) {
 	chats = set.New()
 	users = set.New()
 	rss = set.New()
+	used = set.New()
+	userswithlinks := set.New()
+	chatswithlinks := set.New()
 	nperuser = map[string]int{}
 	subscribed = map[string]int{}
 
@@ -145,6 +160,14 @@ func getStats() (chats *set.Set, users *set.Set, rss *set.Set, nperuser map[stri
 		} else if strings.HasPrefix(k, "user") {
 			uid := strings.Split(k, ":")[1]
 
+			if i, e := strconv.Atoi(uid); e == nil {
+				if i > 0 {
+					userswithlinks.Add(i)
+				} else {
+					chatswithlinks.Add(i)
+				}
+			}
+
 			vu, oku := nperuser[uid]
 			if oku {
 				nperuser[uid] = vu + 1
@@ -153,6 +176,7 @@ func getStats() (chats *set.Set, users *set.Set, rss *set.Set, nperuser map[stri
 			}
 
 			surl := strings.Join(strings.Split(k, ":")[2:], ":")
+			used.Add(surl)
 			v, ok := subscribed[surl]
 			if ok {
 				subscribed[surl] = v + 1
@@ -165,5 +189,7 @@ func getStats() (chats *set.Set, users *set.Set, rss *set.Set, nperuser map[stri
 			rss.Add(strings.TrimLeft(k, "rss:"))
 		}
 	}
+
+	unused = set.Difference(rss, used).(*set.Set)
 	return
 }
