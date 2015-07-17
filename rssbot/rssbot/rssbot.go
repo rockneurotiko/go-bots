@@ -379,11 +379,10 @@ func botItemHandler(bot tgbot.TgBot, firsttime bool) rss.ItemHandlerFunc {
 		if firsttime {
 			firsttime = false
 			lastid, ok := getLastIdUrl(feed.Url)
-			fmt.Println(ok)
-			return
 			if ok {
 				newitems = filterRssListByLastId(newitems, lastid)
 			} else {
+				saveLastIdUrl(feed.Url, newitems)
 				return
 			}
 		}
