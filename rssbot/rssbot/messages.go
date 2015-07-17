@@ -24,9 +24,8 @@ You can cancel this process with /cancel
 */
 
 const (
-	version       = "0.2.0"
-	lastchangelog = `- Now I support sending more type of media, jpg, png, wepb and gifs.
-- `
+	version       = "0.3.0"
+	lastchangelog = ``
 )
 
 var messageUpdate = `Hi!
