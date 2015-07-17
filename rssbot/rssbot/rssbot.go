@@ -137,7 +137,7 @@ func getKeysAndSort(dic map[string]string) []string {
 func readAllDbRss(bot tgbot.TgBot) {
 	allrss := loadFromDbPrefix("rss:")
 	// nmax := len(allrss)
-	blocks := 240.0        // Now every second in 4 mins. Every half second in a minute, 120 blocks
+	blocks := 360.0        // Now every second in 6 mins. Every half second in a minute, 120 blocks
 	nseconds := float64(1) //60 / float64(blocks)
 	// module := int(math.Ceil(float64(nmax) / blocks))
 	i := 0
@@ -167,10 +167,13 @@ func readAllDbRss(bot tgbot.TgBot) {
 					if n_errors < MAX_RETRIES {
 						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 						n_errors++
-						<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
+						// <-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
+						<-time.After(time.Duration(7 * time.Minute))
 						continue
 					} else {
 						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
+						fmt.Printf("Removing url %s\n", uri)
+						cleanBadUrl(uri)
 						return
 					}
 				}
@@ -179,10 +182,10 @@ func readAllDbRss(bot tgbot.TgBot) {
 				if firsttime {
 					firsttime = false
 					setRssValue(urlkey, "true")
-
 				}
-				// Usually every 5 mins
-				<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
+				// Every 7 mins
+				// <-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
+				<-time.After(time.Duration(7 * time.Minute))
 			}
 		}(uri, true)
 	}
@@ -308,12 +311,14 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 			if !firsttime && n_errors < MAX_RETRIES {
 				fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 				n_errors++
-				<-time.After(time.Duration(10) * time.Second)
+				<-time.After(time.Duration(10 * time.Second))
 				continue
 			} else {
 				if firsttime {
 					bot.Answer(msg).Text(fmt.Sprintf("Bad RSS: %s, maybe the URL is bad.\nError msg: %s", uri, err.Error())).ReplyToMessage(msg.ID).End()
 				}
+				fmt.Printf("Removing url %s\n", uri)
+				cleanBadUrl(uri)
 				return
 			}
 		}
@@ -327,20 +332,63 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 			firsttime = false
 			bot.Answer(msg).Text(fmt.Sprintf("You have been subscribed to %s", uri)).ReplyToMessage(msg.ID).End()
 		}
-		// Usually every 5 mins
-		<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
+		// Every 7 mins
+		// <-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
+		<-time.After(time.Duration(7 * time.Minute))
+	}
+}
+
+func getLastIdUrl(url string) (res string, found bool) {
+	key := buildKey("last", url, "")
+	val, ok := getRssValue(key)
+	if ok {
+		switch typed := val.(type) {
+		case string:
+			res = typed
+			found = true
+			return
+		}
+	}
+	res = loadFromDb(key)
+	found = res != ""
+
+	if found {
+		setRssValue(key, res)
+	}
+	return
+}
+
+func saveLastIdUrl(url string, items []*rss.Item) {
+	if len(items) <= 0 {
+		return
+	}
+	lastitem := items[len(items)-1]
+	newid := lastitem.Key()
+	lastid, _ := getLastIdUrl(url)
+	if newid != lastid {
+		key := buildKey("last", url, "")
+		// save it!!!
+		saveInDb(map[string]string{key: newid})
+		setRssValue(key, newid)
 	}
 }
 
 func botItemHandler(bot tgbot.TgBot, firsttime bool) rss.ItemHandlerFunc {
 	return func(feed *rss.Feed, ch *rss.Channel, newitems []*rss.Item) {
 		// fmt.Printf("%d new item(s) in %s, firsttime: %v\n", len(newitems), feed.Url, firsttime)
-
 		if firsttime {
 			firsttime = false
+			lastid, ok := getLastIdUrl(feed.Url)
+			fmt.Println(ok)
 			return
+			if ok {
+				newitems = filterRssListByLastId(newitems, lastid)
+			} else {
+				return
+			}
 		}
 
+		saveLastIdUrl(feed.Url, newitems)
 		newst := ExtractNews(newitems)
 
 		sendToAll(bot, feed.Url, newst)

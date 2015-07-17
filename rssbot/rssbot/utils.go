@@ -123,6 +123,61 @@ func isAffordableNetworkError(err error) bool {
 	return false
 }
 
+func reverseRss(lst []*rss.Item) chan *rss.Item {
+	ret := make(chan *rss.Item)
+	go func() {
+		for i, _ := range lst {
+			ret <- lst[len(lst)-1-i]
+		}
+		close(ret)
+	}()
+	return ret
+}
+
+func filterRssListByLastId(items []*rss.Item, id string) []*rss.Item {
+	result := make([]*rss.Item, 0)
+	startadding := false
+	for _, item := range items {
+		if startadding {
+			result = append(result, item)
+			continue
+		}
+		startadding = item.Key() == id
+	}
+
+	if !startadding && len(items) > 0 && len(result) == 0 {
+		return items
+	}
+
+	return result
+}
+
+func cleanBadUrl(url string) {
+	urlkey := buildKey("rss", url, "")
+	allv := loadFromDbPrefix(urlkey)
+
+	delRssKey(url)    // URL for users
+	delRssKey(urlkey) // URL key for cache checks
+
+	keystoremove := make([]string, 0)
+	for key := range allv {
+		splitted := strings.Split(key, ":")
+		if strings.Join(splitted[1:], ":") == url {
+			keystoremove = append(keystoremove, key)
+		} else {
+			user := splitted[len(splitted)-1]
+			// We are removing the hole key from the cache
+			// i, e := strconv.Atoi(user)
+			// if e != nil {
+			// 	removeFromCacheUsers(url, i)
+			// }
+			keystoremove = append(keystoremove, key)
+			keystoremove = append(keystoremove, buildKey("user", user, url))
+		}
+	}
+	multiDeleteDb(keystoremove)
+}
+
 func removeUnused() {
 	_, _, rss, used, _, _, unus := getStats()
 	fmt.Printf("%v\n", rss.Size())

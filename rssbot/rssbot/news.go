@@ -55,7 +55,11 @@ Date: %s
 // ExtractNews will return the proper structures from items
 func ExtractNews(newitems []*rss.Item) []NewStruct {
 	var newst []NewStruct
-	for _, new := range newitems {
+	// avoid create a channel (the reverseRss) if no items
+	if len(newitems) <= 0 {
+		return newst
+	}
+	for new := range reverseRss(newitems) {
 		// init
 		// linkstr := ""
 		var linkslist []string

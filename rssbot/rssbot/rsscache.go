@@ -37,6 +37,12 @@ func getRssValue(key string) (interface{}, bool) {
 	return autorsscache.Cache.Get(key)
 }
 
+func delRssKey(key string) {
+	autorsscache.Lock()
+	defer autorsscache.Unlock()
+	autorsscache.Cache.Delete(key)
+}
+
 func addRssInnerUser(key string, id int) {
 	autorsscache.Lock()
 	defer autorsscache.Unlock()
