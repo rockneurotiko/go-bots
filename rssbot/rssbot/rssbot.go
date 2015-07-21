@@ -18,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	_ "code.google.com/p/vp8-go/webp"
 	rss "github.com/jteeuwen/go-pkg-rss" // Subscribe to RSS
 	"github.com/jteeuwen/go-pkg-xmlx"    // Dependency of RSS
 	"github.com/rockneurotiko/go-tgbot"  // Telegram Bot Library :)
