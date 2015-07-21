@@ -60,7 +60,6 @@ func divideAndConquer(str string) []string {
 		str = str[4096:]
 	}
 	return newstr
-
 }
 
 func sendWakingUpMessage(bot tgbot.TgBot, send bool) {
@@ -137,15 +136,20 @@ func reverseRss(lst []*rss.Item) chan *rss.Item {
 func filterRssListByLastId(items []*rss.Item, id string) []*rss.Item {
 	result := make([]*rss.Item, 0)
 	startadding := false
-	for _, item := range items {
+	for item := range reverseRss(items) {
 		if startadding {
 			result = append(result, item)
 			continue
 		}
 		startadding = item.Key() == id
 	}
-
+	if len(result) > 10 {
+		result = result[0:9]
+	}
 	if !startadding && len(items) > 0 && len(result) == 0 {
+		if len(items) > 10 {
+			items = items[0:9]
+		}
 		return items
 	}
 

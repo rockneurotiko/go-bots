@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	MAX_RETRIES = 5
+	MAX_RETRIES = 3
+	MINS_SLEEP  = 5
 )
 
 // BuildBot ...
@@ -129,7 +130,6 @@ func getKeysAndSort(dic map[string]string) []string {
 	for k := range dic {
 		res = append(res, k)
 	}
-
 	sort.Strings(res)
 	return res
 }
@@ -137,8 +137,8 @@ func getKeysAndSort(dic map[string]string) []string {
 func readAllDbRss(bot tgbot.TgBot) {
 	allrss := loadFromDbPrefix("rss:")
 	// nmax := len(allrss)
-	blocks := 360.0        // Now every second in 6 mins. Every half second in a minute, 120 blocks
-	nseconds := float64(1) //60 / float64(blocks)
+	blocks := 60.0 * float64(MINS_SLEEP) // Now every second in 9 mins. Every half second in a minute, 120 blocks
+	nseconds := float64(1)               //60 / float64(blocks)
 	// module := int(math.Ceil(float64(nmax) / blocks))
 	i := 0
 	for urlkey := range allrss {
@@ -168,7 +168,7 @@ func readAllDbRss(bot tgbot.TgBot) {
 						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 						n_errors++
 						// <-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
-						<-time.After(time.Duration(7 * time.Minute))
+						<-time.After(time.Duration(MINS_SLEEP) * time.Minute)
 						continue
 					} else {
 						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
@@ -183,9 +183,9 @@ func readAllDbRss(bot tgbot.TgBot) {
 					firsttime = false
 					setRssValue(urlkey, "true")
 				}
-				// Every 7 mins
+				// Every MINS_SLEEP mins
 				// <-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
-				<-time.After(time.Duration(7 * time.Minute))
+				<-time.After(time.Duration(MINS_SLEEP) * time.Minute)
 			}
 		}(uri, true)
 	}
@@ -311,7 +311,7 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 			if !firsttime && n_errors < MAX_RETRIES {
 				fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
 				n_errors++
-				<-time.After(time.Duration(10 * time.Second))
+				<-time.After(time.Duration(10) * time.Second)
 				continue
 			} else {
 				if firsttime {
@@ -332,9 +332,9 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 			firsttime = false
 			bot.Answer(msg).Text(fmt.Sprintf("You have been subscribed to %s", uri)).ReplyToMessage(msg.ID).End()
 		}
-		// Every 7 mins
+		// Every MINS_SLEEP mins
 		// <-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
-		<-time.After(time.Duration(7 * time.Minute))
+		<-time.After(time.Duration(MINS_SLEEP) * time.Minute)
 	}
 }
 
@@ -362,7 +362,7 @@ func saveLastIdUrl(url string, items []*rss.Item) {
 	if len(items) <= 0 {
 		return
 	}
-	lastitem := items[len(items)-1]
+	lastitem := items[0]
 	newid := lastitem.Key()
 	lastid, _ := getLastIdUrl(url)
 	if newid != lastid {
@@ -470,6 +470,10 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 		for _, n := range newst {
 			// Send text
 			longSend(bot, i, n.BuildText())
+
+			for _, link := range n.InternalLinks {
+				bot.Send(i).Text(link).DisablePreview(false).End()
+			}
 
 			// handle options!
 			if !useroptions.SendImage {

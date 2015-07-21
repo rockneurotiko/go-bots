@@ -2,6 +2,8 @@ package rssbot
 
 import (
 	"fmt"
+	"io"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -10,14 +12,15 @@ import (
 
 // NewStruct represent a "new" document
 type NewStruct struct {
-	Text        string
-	Images      []string
-	Title       string
-	Description string
-	Date        string
-	Author      string
-	LinksText   string
-	Links       []string
+	Text          string
+	Images        []string
+	Title         string
+	Description   string
+	Date          string
+	Author        string
+	LinksText     string
+	Links         []string
+	InternalLinks []string
 }
 
 // BuildText from the data
@@ -62,7 +65,10 @@ func ExtractNews(newitems []*rss.Item) []NewStruct {
 	for new := range reverseRss(newitems) {
 		// init
 		// linkstr := ""
-		var linkslist []string
+		var (
+			linkslist     []string
+			linksinternal []string
+		)
 		// linkslist := make([]string, 0)
 		var images []string
 		descrip := ""
@@ -82,36 +88,70 @@ func ExtractNews(newitems []*rss.Item) []NewStruct {
 		if new.Content != nil {
 			content = new.Content.Text
 		}
-		// finaltext := fmt.Sprintf("%s<br>%s", new.Description, content)
-		read := strings.NewReader(content)
-		doc, err := goquery.NewDocumentFromReader(read)
 
-		if err == nil {
-			doc.Find("img").Each(func(i int, s *goquery.Selection) {
-				val, ok := s.Attr("src")
-				if ok {
-					images = append(images, val)
-				}
-			})
-
-			descrip = doc.Text()
-
-			doc2, err2 := goquery.NewDocumentFromReader(strings.NewReader(descrip))
-			if err2 == nil {
-				doc2.Find("img").Each(func(i int, s *goquery.Selection) {
-					val, ok := s.Attr("src")
+		f := func(reader io.Reader, list []string, search string, attr string) (string, []string) {
+			text := ""
+			doc, err := goquery.NewDocumentFromReader(reader)
+			if err == nil {
+				doc.Find(search).Each(func(i int, s *goquery.Selection) {
+					val, ok := s.Attr(attr)
 					if ok {
-						images = append(images, val)
+						list = append(list, val)
 					}
 				})
-				descrip = doc2.Text()
+				text = doc.Text()
 			}
+			return text, list
 		}
+
+		cleanlinks := func(links []string) []string {
+			suffixlist := []string{
+				"/embed/simple", // vine
+			}
+			singleregex := map[*regexp.Regexp]string{
+				regexp.MustCompile(`https?://(?:www\.)?youtube\.com/embed/([\w-_]+)\??`): "https://www.youtube.com/watch?v=%s", // youtube embed
+			}
+			for i, l := range links {
+				for _, suff := range suffixlist {
+					if strings.HasSuffix(l, suff) {
+						links[i] = strings.TrimRight(l, suff)
+					}
+				}
+				for k, v := range singleregex {
+					if k.MatchString(l) {
+						matchs := k.FindStringSubmatch(l)
+						if len(matchs) <= 1 {
+							continue
+						}
+						links[i] = fmt.Sprintf(v, matchs[1])
+					}
+				}
+			}
+			return links
+		}
+
+		descrip, images = f(strings.NewReader(content), images, "img", "src")
+		descrip, images = f(strings.NewReader(descrip), images, "img", "src")
+		_, linksinternal = f(strings.NewReader(content), linksinternal, "iframe", "src")
+		_, linksinternal = f(strings.NewReader(content), linksinternal, "video", "src")
+		_, linksinternal = f(strings.NewReader(content), linksinternal, "source", "src")
+
+		linksinternal = cleanlinks(linksinternal)
 
 		new.Title, descrip = analyzeTitleDescrip(new.Title, descrip)
 
 		// itemstr := fmt.Sprintf("%s%s\n%s", new.Title, linkstr, descrip)
-		newst = append(newst, NewStruct{"", images, new.Title, descrip, new.PubDate, new.Author.Name, "", linkslist})
+		newst = append(newst, NewStruct{
+			Text:          "",
+			Images:        images,
+			Title:         new.Title,
+			Description:   descrip,
+			Date:          new.PubDate,
+			Author:        new.Author.Name,
+			LinksText:     "",
+			Links:         linkslist,
+			InternalLinks: linksinternal,
+		})
 
 		// newst = append(newst, NewStruct{itemstr, images})
 	}
