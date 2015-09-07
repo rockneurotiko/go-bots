@@ -177,7 +177,7 @@ Icon made by Dirtyworks (License: CC BY 3.0)
 
 This bot is open source and has been created by @rock_neurotiko, I hope that you like it ;-)
 The source code can be founded in: https://github.com/rockneurotiko/go-bots
-`)).DisablePreview(true).End()
+`, msg.From.FirstName)).DisablePreview(true).End()
 	return nil
 }
 
