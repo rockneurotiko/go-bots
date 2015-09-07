@@ -492,7 +492,7 @@ func sendToAll(bot tgbot.TgBot, uri string, newst []NewStruct) {
 
 				id, ok = gifsids[im]
 				if ok && id != "" {
-					bot.Send(i).Photo(id).End()
+					bot.Send(i).Document(id).End()
 					continue
 				} else if ok && id == "" {
 					continue
