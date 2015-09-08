@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pivotal-golang/bytefmt"
@@ -25,12 +26,12 @@ type FileInfo struct {
 	Name string
 }
 
-func file_info(url string) FileInfo {
+func file_info(uri string) FileInfo {
 	defaultreturn := FileInfo{0, ""}
 
-	response, err := http.Head(url)
+	response, err := http.Head(uri)
 	if err != nil {
-		log.Fatal("Error while downloading", url, ":", err)
+		log.Fatal("Error while downloading", uri, ":", err)
 		return defaultreturn
 	}
 
@@ -47,6 +48,13 @@ func file_info(url string) FileInfo {
 	_, params, err := mime.ParseMediaType(response.Header.Get("Content-Disposition"))
 	if err == nil {
 		filename = params["filename"] // set to "foo.png"
+	}
+
+	if filename == "defaultname" {
+		u, err := url.Parse(uri)
+		if err != nil {
+			filename = strings.TrimLeft(u.Path, "/")
+		}
 	}
 
 	// for k, v := range response.Header {
