@@ -58,6 +58,7 @@ func (w Worker) Start() {
 				res, err := http.Get(work.Url)
 				if err != nil {
 					log.Println(err)
+					work.AnswerChannel <- WorkAnswer{false}
 					continue
 				}
 				ans := work.Bot.Send(work.Id).Document(tgbot.ReaderSender{res.Body, work.Name}).End()
@@ -71,7 +72,6 @@ func (w Worker) Start() {
 				log.Printf("Stopping worker %d\n", w.ID)
 				return
 			}
-
 		}
 	}()
 }
