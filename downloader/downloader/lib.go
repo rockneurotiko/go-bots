@@ -181,7 +181,7 @@ The source code can be founded in: https://github.com/rockneurotiko/go-bots
 	return nil
 }
 
-func BuildBot(token string) *tgbot.TgBot {
+func BuildBot(token string, workers int) *tgbot.TgBot {
 	bot := tgbot.New(token).
 		SimpleCommandFn(`help`, help).
 		SimpleCommandFn(`start`, help).
@@ -189,7 +189,7 @@ func BuildBot(token string) *tgbot.TgBot {
 		CommandFn(`down (.+)`, down).
 		RegexFn(`^([^/].+)`, down)
 
-	StartDispatcher(10) // more?
+	StartDispatcher(workers) // more?
 
 	return bot
 }

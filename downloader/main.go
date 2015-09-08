@@ -11,7 +11,7 @@ import (
 func main() {
 	godotenv.Load("secrets.env")
 	token := os.Getenv("TELEGRAM_KEY")
-	bot := downloader.BuildBot(token)
+	bot := downloader.BuildBot(token, 5)
 	fmt.Println("Let's start!")
 	bot.SimpleStart()
 }
