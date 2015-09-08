@@ -134,6 +134,7 @@ Size: %s`, urlstring, info.Name, prettysize)).End()
 	WorkQueue <- wr
 
 	answer := WorkAnswer{true}
+	ntimes := uint64(0)
 	// Only send uploading document if size is > 5MB
 	if size > MAX_SEND_UPLOAD {
 		// This is just to send that we are uploading document
@@ -145,6 +146,11 @@ Size: %s`, urlstring, info.Name, prettysize)).End()
 
 				break Download
 			case <-time.After(time.Second * 7):
+				ntimes++
+				if ntimes >= size/MAX_SEND_UPLOAD {
+					answer = WorkAnswer{false}
+					break Download
+				}
 				bot.Answer(msg).Action(tgbot.UploadDocument).End()
 			}
 		}
