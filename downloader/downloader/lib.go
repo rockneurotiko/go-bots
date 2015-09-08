@@ -44,20 +44,24 @@ func file_info(uri string) FileInfo {
 	length, _ := strconv.Atoi(response.Header.Get("Content-Length"))
 	sourceSize := uint64(length)
 
-	filename := "defaultname"
+	filename := ""
 	_, params, err := mime.ParseMediaType(response.Header.Get("Content-Disposition"))
 	if err == nil {
 		filename = params["filename"] // set to "foo.png"
 	}
 
-	if filename == "defaultname" {
+	if filename == "" {
 		u, err := url.Parse(uri)
-		if err != nil {
+		if err == nil {
 			s := strings.Split(u.Path, "/")
 			if len(s) > 0 {
 				filename = s[len(s)-1]
 			}
 		}
+	}
+
+	if filename == "" {
+		filename = "defaultname"
 	}
 
 	// for k, v := range response.Header {
