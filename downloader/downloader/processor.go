@@ -57,7 +57,7 @@ func (w Worker) Start() {
 				// log.Printf("Received work %v\n", work)
 				res, err := http.Get(work.Url)
 				if err != nil {
-					log.Fatal(err)
+					log.Println(err)
 					continue
 				}
 				ans := work.Bot.Send(work.Id).Document(tgbot.ReaderSender{res.Body, work.Name}).End()

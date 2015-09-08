@@ -31,13 +31,13 @@ func file_info(uri string) FileInfo {
 
 	response, err := http.Head(uri)
 	if err != nil {
-		log.Fatal("Error while downloading", uri, ":", err)
+		log.Printf("Error while downloading %s: %s", uri, err.Error())
 		return defaultreturn
 	}
 
 	// Verify if the response was ok
 	if response.StatusCode != http.StatusOK {
-		log.Fatal("Server return non-200 status: %v\n", response.Status)
+		log.Printf("Server return non-200 status: %v\n", response.Status)
 		return defaultreturn
 	}
 
