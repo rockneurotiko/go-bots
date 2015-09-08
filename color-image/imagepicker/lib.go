@@ -97,7 +97,7 @@ Icon made by Freepik (License CC BY 3.0)
 
 This bot is open source has been created by @rock_neurotiko, I hope that you like it ;-)
 
-The source code can be founded in: https://github.com/rockneurotiko/go-bots
+The source code can be founded in: https://github.com/rockneurotiko/go-bots/tree/master/color-image
 `, msg.From.FirstName)).
 		DisablePreview(true).
 		End()
