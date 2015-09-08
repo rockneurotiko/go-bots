@@ -179,6 +179,8 @@ Icon made by Dirtyworks (License: CC BY 3.0)
 This bot is open source and has been created by @rock_neurotiko, I hope that you like it ;-)
 
 The source code can be founded in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
+
+If you like it you can vote this bot in @storebot: https://telegram.me/storebot?start=simple_downloader_bot
 `, msg.From.FirstName)).DisablePreview(true).End()
 	return nil
 }
@@ -189,7 +191,10 @@ func BuildBot(token string, workers int) *tgbot.TgBot {
 		SimpleCommandFn(`start`, help).
 		SimpleCommandFn(`tricks`, tricks).
 		CommandFn(`down (.+)`, down).
-		RegexFn(`^([^/].+)`, down)
+		RegexFn(`^([^/].+)`, down).
+		AnyMsgFn(func(bot tgbot.TgBot, msg tgbot.Message) {
+		log.Println(msg)
+	})
 
 	StartDispatcher(workers) // more?
 
