@@ -133,6 +133,7 @@ Size: %s`, urlstring, info.Name, prettysize)).End()
 	// Enqueue ^^
 	WorkQueue <- wr
 
+	answer := WorkAnswer{true}
 	// Only send uploading document if size is > 5MB
 	if size > MAX_SEND_UPLOAD {
 		// This is just to send that we are uploading document
@@ -140,14 +141,19 @@ Size: %s`, urlstring, info.Name, prettysize)).End()
 	Download:
 		for {
 			select {
-			case <-c:
+			case answer = <-c:
+
 				break Download
 			case <-time.After(time.Second * 7):
 				bot.Answer(msg).Action(tgbot.UploadDocument).End()
 			}
 		}
 	} else {
-		<-c
+		answer = <-c
+	}
+
+	if !answer.Result {
+		bot.Answer(msg).Text("Some error happened while trying to download your URL...").End()
 	}
 
 	cacheuserdownload.Delete(chatid)
