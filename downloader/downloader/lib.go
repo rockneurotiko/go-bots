@@ -53,7 +53,10 @@ func file_info(uri string) FileInfo {
 	if filename == "defaultname" {
 		u, err := url.Parse(uri)
 		if err != nil {
-			filename = strings.TrimLeft(u.Path, "/")
+			s := strings.Split(u.Path, "/")
+			if len(s) > 0 {
+				filename = s[len(s)-1]
+			}
 		}
 	}
 
