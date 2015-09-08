@@ -160,6 +160,7 @@ Dropbox: %s`, dropboxhelp)).End()
 
 func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	bot.Answer(msg).Text(fmt.Sprintf(`Hi! I'm Downloader Bot! How are you %s?
+
 I'll help you to download files :)
 
 You can only download one file at a time, and there are a general queue to not flood my free server, so maybe it take some time to download it (you will see that are downloading when the bot sends "Uploading document").
@@ -176,7 +177,8 @@ Other commands:
 Icon made by Dirtyworks (License: CC BY 3.0)
 
 This bot is open source and has been created by @rock_neurotiko, I hope that you like it ;-)
-The source code can be founded in: https://github.com/rockneurotiko/go-bots
+
+The source code can be founded in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
 `, msg.From.FirstName)).DisablePreview(true).End()
 	return nil
 }
