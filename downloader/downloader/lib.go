@@ -92,6 +92,9 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		return nil
 	}
 
+	tmpu := scrape_uri(UrlInfo{urlstring, ""})
+	urlstring = tmpu.Url
+
 	id, ok := cacheids.Get(urlstring)
 	if ok {
 		log.Println("Founded in cache!")
@@ -99,8 +102,6 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		return nil
 	}
 
-	tmpu := scrape_uri(UrlInfo{urlstring, ""})
-	urlstring = tmpu.Url
 	// Get file info
 	info := file_info(urlstring)
 
