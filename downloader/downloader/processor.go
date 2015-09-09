@@ -12,16 +12,18 @@ import (
 type WorkRequest struct {
 	Id            int
 	Url           string
+	OriginalUrl   string
 	Name          string
 	Bot           tgbot.TgBot
 	AnswerChannel chan WorkAnswer
 }
 
-func NewWorkRequest(msg tgbot.Message, url string, name string, bot tgbot.TgBot) (WorkRequest, chan WorkAnswer) {
+func NewWorkRequest(msg tgbot.Message, url string, original string, name string, bot tgbot.TgBot) (WorkRequest, chan WorkAnswer) {
 	c := make(chan WorkAnswer)
 	return WorkRequest{
 		msg.Chat.ID,
 		url,
+		original,
 		name,
 		bot,
 		c,
@@ -62,6 +64,7 @@ func (w Worker) Start() {
 					work.AnswerChannel <- WorkAnswer{false}
 					continue
 				}
+				// Know if document/video/image?
 				ans := work.Bot.Send(work.Id).Document(tgbot.ReaderSender{res.Body, work.Name}).End()
 				res.Body.Close()
 
