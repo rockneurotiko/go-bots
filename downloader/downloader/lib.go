@@ -229,7 +229,7 @@ Other commands:
 
 Icon made by Dirtyworks (License: CC BY 3.0)
 
-This bot is open source and has been created by @rock_neurotiko, I hope that you like it ;-)
+This bot is open source and has been created by @rockneurotiko, I hope that you like it ;-)
 
 The source code can be founded in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
 

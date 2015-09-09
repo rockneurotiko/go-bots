@@ -95,7 +95,7 @@ You can remove the # (/hex 7B7B7B)
 
 Icon made by Freepik (License CC BY 3.0)
 
-This bot is open source and has been created by @rock_neurotiko, I hope that you like it ;-)
+This bot is open source and has been created by @rockneurotiko, I hope that you like it ;-)
 
 The source code can be founded in: https://github.com/rockneurotiko/go-bots/tree/master/color-image
 `, msg.From.FirstName)).
