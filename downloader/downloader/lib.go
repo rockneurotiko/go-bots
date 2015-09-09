@@ -214,8 +214,13 @@ I'll help you to download files :)
 You can only download one file at a time, and there are a general queue to not flood my free server, so maybe it take some time to download it (you will see that are downloading when the bot sends "Uploading document").
 
 You can download in two ways:
-- Send the URL
-- Send the URL and a name of file
+- Send the URL, for example, this will send you the song:
+https://soundcloud.com/monstercat/tristam-braken-flight
+- Send the URL and a name of file, for example, this will send you the song with the name "monstercat_awesome.mp3":
+https://soundcloud.com/monstercat/tristam-braken-flight monstercat_awesome.mp3
+
+To try to be fast, I have a cache that wipes the URL's if hadn't been used in one hour. Thanks to that you can ask for an URL two times and the second time will be instant.
+But, because of that, if someone ask an URL with name, and you ask the same URL, you will gate that name no matter what, until the cache is wiped :)
 
 Other commands:
 - /help - Show this help
