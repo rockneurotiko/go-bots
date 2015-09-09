@@ -10,3 +10,5 @@ You can talk to me in [telegram](https://telegram.me/rockneurotiko)
 
 - [Book Bot (File Share Bot)](https://github.com/rockneurotiko/go-bots/tree/master/bookbot) - This is a bot that makes easy to share a directory from your disk.
 - [RSS Bot](https://github.com/rockneurotiko/go-bots/tree/master/rssbot) -  This is a bot to manage RSS subscription with notifications.
+- [Downloader Bot](https://github.com/rockneurotiko/go-bots/tree/master/downloader) - This is a bot to let the users download files from URLs.
+- [Color Picker](https://github.com/rockneurotiko/go-bots/tree/master/color-image) - This is a really simple bot that return a sample image of RGB or Hexadecimal.
