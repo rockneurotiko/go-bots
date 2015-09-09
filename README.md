@@ -1,4 +1,4 @@
-### Go Bots! ###
+# Go Bots!
 
 This is a repository where I will upload my bots developed with my [Telegram Bot's API library, tgbot](https://www.github.com/rockneurotiko/go-tgbot)
 
