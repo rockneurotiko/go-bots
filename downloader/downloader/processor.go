@@ -3,6 +3,7 @@ package downloader
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/pmylund/go-cache"
 	"github.com/rockneurotiko/go-tgbot"
@@ -63,11 +64,28 @@ func (w Worker) Start() {
 				}
 				ans := work.Bot.Send(work.Id).Document(tgbot.ReaderSender{res.Body, work.Name}).End()
 				res.Body.Close()
-				if ans.Ok && ans.Result != nil && ans.Result.Document != nil {
-					fileid := ans.Result.Document.FileID
-					cacheids.Set(work.Url, fileid, cache.DefaultExpiration)
+
+				if ans.Ok && ans.Result != nil {
+					result := *ans.Result
+					fileid := ""
+					if result.Document != nil {
+						fileid = result.Document.FileID
+					}
+					if result.Audio != nil {
+						fileid = result.Audio.FileID
+					}
+					if result.Video != nil {
+						fileid = result.Video.FileID
+					}
+					if fileid != "" {
+						cacheids.Set(work.Url, fileid, cache.DefaultExpiration)
+					}
 				}
-				work.AnswerChannel <- WorkAnswer{true}
+				// Just to avoid non reading sender channel
+				select {
+				case work.AnswerChannel <- WorkAnswer{true}:
+				case <-time.After(time.Second * 1):
+				}
 			case <-w.QuitChan:
 				log.Printf("Stopping worker %d\n", w.ID)
 				return
