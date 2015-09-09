@@ -99,8 +99,15 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		return nil
 	}
 
+	tmpu := scrape_uri(UrlInfo{urlstring, ""})
+	urlstring = tmpu.Url
 	// Get file info
 	info := file_info(urlstring)
+
+	if tmpu.Name != "" {
+		info.Name = tmpu.Name
+	}
+
 	size := info.Size
 	prettysize := bytefmt.ByteSize(size)
 
