@@ -17,72 +17,190 @@ type UrlInfo struct {
 
 // youtube!
 
-func scrape_youtube(uri UrlInfo) UrlInfo {
-	var m struct {
-		Data struct {
-			Status  string `json:"status"`
-			Content string `json:"content"`
-		} `json:"data"`
-	}
-	var m2 struct {
-		Data struct {
-			Status  string `json:"status"`
-			Content string `json:"content"`
-		} `json:"data"`
-	}
+type YoutubeStruct struct {
+	Info struct {
+		Acodec            string      `json:"acodec,omitempty"`
+		AgeLimit          int         `json:"age_limit,omitempty"`
+		Annotations       interface{} `json:"annotations,omitempty"`
+		AutomaticCaptions struct {
+		} `json:"automatic_captions,omitempty"`
+		AverageRating float64     `json:"average_rating,omitempty"`
+		Categories    []string    `json:"categories,omitempty"`
+		Description   string      `json:"description,omitempty"`
+		DislikeCount  int         `json:"dislike_count,omitempty"`
+		DisplayID     string      `json:"display_id,omitempty"`
+		Duration      int         `json:"duration,omitempty"`
+		EndTime       interface{} `json:"end_time,omitempty"`
+		Ext           string      `json:"ext,omitempty"`
+		Extractor     string      `json:"extractor,omitempty"`
+		ExtractorKey  string      `json:"extractor_key,omitempty"`
+		Filesize      int         `json:"filesize,omitempty"`
+		Format        string      `json:"format,omitempty"`
+		FormatID      string      `json:"format_id,omitempty"`
+		FormatNote    string      `json:"format_note,omitempty"`
+		Formats       []struct {
+			Abr         int    `json:"abr,omitempty"`
+			Acodec      string `json:"acodec,omitempty"`
+			Asr         int    `json:"asr,omitempty"`
+			Container   string `json:"container,omitempty"`
+			Ext         string `json:"ext,omitempty"`
+			Filesize    int    `json:"filesize,omitempty"`
+			Format      string `json:"format,omitempty"`
+			FormatID    string `json:"format_id,omitempty"`
+			FormatNote  string `json:"format_note,omitempty"`
+			Fps         int    `json:"fps,omitempty"`
+			Height      int    `json:"height,omitempty"`
+			HTTPHeaders struct {
+				Accept         string `json:"Accept,omitempty"`
+				AcceptCharset  string `json:"Accept-Charset,omitempty"`
+				AcceptEncoding string `json:"Accept-Encoding,omitempty"`
+				AcceptLanguage string `json:"Accept-Language,omitempty"`
+				UserAgent      string `json:"User-Agent,omitempty"`
+			} `json:"http_headers,omitempty"`
+			Preference int    `json:"preference,omitempty"`
+			Tbr        int    `json:"tbr,omitempty"`
+			URL        string `json:"url,omitempty"`
+			Vcodec     string `json:"vcodec,omitempty"`
+			Width      int    `json:"width,omitempty"`
+		} `json:"formats,omitempty"`
+		Fps         interface{} `json:"fps,omitempty"`
+		Height      int         `json:"height,omitempty"`
+		HTTPHeaders struct {
+			Accept         string `json:"Accept,omitempty"`
+			AcceptCharset  string `json:"Accept-Charset,omitempty"`
+			AcceptEncoding string `json:"Accept-Encoding,omitempty"`
+			AcceptLanguage string `json:"Accept-Language,omitempty"`
+			UserAgent      string `json:"User-Agent,omitempty"`
+		} `json:"http_headers,omitempty"`
+		ID                 string      `json:"id,omitempty"`
+		IsLive             bool        `json:"is_live,omitempty"`
+		LikeCount          int         `json:"like_count,omitempty"`
+		PlayerURL          string      `json:"player_url,omitempty"`
+		Playlist           interface{} `json:"playlist,omitempty"`
+		PlaylistIndex      interface{} `json:"playlist_index,omitempty"`
+		RequestedSubtitles interface{} `json:"requested_subtitles,omitempty"`
+		StartTime          interface{} `json:"start_time,omitempty"`
+		Subtitles          struct {
+		} `json:"subtitles,omitempty"`
+		Tags       []string    `json:"tags,omitempty"`
+		Tbr        interface{} `json:"tbr,omitempty"`
+		Thumbnail  string      `json:"thumbnail,omitempty"`
+		Thumbnails []struct {
+			ID  string `json:"id,omitempty"`
+			URL string `json:"url,omitempty"`
+		} `json:"thumbnails,omitempty"`
+		Title              string `json:"title,omitempty"`
+		UploadDate         string `json:"upload_date,omitempty"`
+		Uploader           string `json:"uploader,omitempty"`
+		UploaderID         string `json:"uploader_id,omitempty"`
+		URL                string `json:"url,omitempty"`
+		Vcodec             string `json:"vcodec,omitempty"`
+		ViewCount          int    `json:"view_count,omitempty"`
+		WebpageURL         string `json:"webpage_url,omitempty"`
+		WebpageURLBasename string `json:"webpage_url_basename,omitempty"`
+		Width              int    `json:"width,omitempty"`
+	} `json:"info"`
+	URL              string `json:"url,omitempty"`
+	YoutubeDlVersion string `json:"youtube-dl.version,omitempty"`
+}
 
-	basereq := "http://api.debianweb.ir/youtube/%s"
-	downreq := "http://api.debianweb.ir/youtube/link/%s/%s"
+type internalBest struct {
+	Extension string
+	Size      int
+	Url       string
+	HW        int
+}
 
-	u, err := url.Parse(uri.Url)
-	if err != nil {
-		return uri
-	}
-	vals := u.Query()
-	videoid := vals.Get("v")
-	if videoid == "" {
-		return uri
-	}
+type YoutubeAnalyze struct {
+	Title     string
+	BestVideo internalBest
+	BestAudio internalBest
+}
 
-	res, err := http.Get(fmt.Sprintf(basereq, videoid))
-	if err != nil {
+func get_bestone(yt YoutubeStruct) YoutubeAnalyze {
+	yta := YoutubeAnalyze{
+		Title:     yt.Info.Title,
+		BestVideo: internalBest{"", 999999999999, "", 99999999999},
+		BestAudio: internalBest{"", 999999999999, "", 99999999999},
+	}
+	// bestmb := 999999999999
+	// bestmburl := ""
+	// bestsize := 99999999999
+	// bestsizeurl := ""
+	compare := func(old int, new int) bool {
+		if old < MAX_SIZE && new > old && new < MAX_SIZE {
+			return true
+		}
+		if old > MAX_SIZE {
+			return true
+		}
+		return false
+	}
+	for _, f := range yt.Info.Formats {
+		// tenga tamanho, sea menor que el maximo, y el maximo sea mayor que 50MB
+		if f.Filesize > 0 {
+			if strings.Contains(f.FormatNote, "audio") {
+				// Si es mejor O es vorbis y esta bien :)
+				if compare(yta.BestAudio.Size, f.Filesize) ||
+					(f.Acodec == "vorbis" && f.Filesize < MAX_SIZE) {
+					yta.BestAudio.Size = f.Filesize
+					yta.BestAudio.Url = f.URL
+					yta.BestAudio.Extension = f.Ext
+				}
+			} else if !strings.Contains(f.FormatNote, "DASH") {
+				if compare(yta.BestVideo.Size, f.Filesize) {
+					yta.BestVideo.Size = f.Filesize
+					yta.BestVideo.Url = f.URL
+					yta.BestVideo.Extension = f.Ext
+				}
+			}
+		} else if !strings.Contains(f.FormatNote, "audio") && f.Height > 0 && f.Width > 0 && f.Height*f.Width < yta.BestVideo.HW {
+			yta.BestVideo.HW = f.Height * f.Width
+			yta.BestVideo.Url = f.URL
+			yta.BestVideo.Extension = f.Ext
+		}
+	}
+	return yta
+}
+
+type TypeMedia int
+
+const (
+	Video TypeMedia = iota
+	Audio
+)
+
+func (self TypeMedia) WithUrl(url string) string {
+	kind := "video"
+	if self == Audio {
+		kind = "audio"
+	}
+	return fmt.Sprintf("%s::%s", url, kind)
+}
+
+func new_scrape_youtube(uri UrlInfo, tm TypeMedia) UrlInfo {
+	basereq := fmt.Sprintf("%s/api/info?url=%s", youtubedl, "%s")
+	res, err := http.Get(fmt.Sprintf(basereq, uri.Url))
+	if err != nil || res.StatusCode != 200 {
 		return uri
 	}
 	bytes, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
 	if err != nil {
 		return uri
 	}
+
+	var m YoutubeStruct
 	json.Unmarshal(bytes, &m)
-	if m.Data.Status != "OK" {
-		return uri
-	}
 
-	listformats := strings.Split(m.Data.Content, "\n")
-	// Just pick thi firstone, but we'll have to
-	picked := listformats[0]
-	fid := strings.Split(picked, "|")[0]
-
-	res, err = http.Get(fmt.Sprintf(downreq, videoid, fid))
-	if err != nil {
-		return uri
+	yta := get_bestone(m)
+	if tm == Video && yta.BestVideo.Url != "" {
+		newname := fmt.Sprintf("%s.%s", yta.Title, yta.BestVideo.Extension)
+		return UrlInfo{yta.BestVideo.Url, newname}
+	} else if tm == Audio && yta.BestAudio.Url != "" {
+		newname := fmt.Sprintf("%s.%s", yta.Title, yta.BestAudio.Extension)
+		return UrlInfo{yta.BestAudio.Url, newname}
 	}
-
-	bytes, err = ioutil.ReadAll(res.Body)
-	if err != nil {
-		return uri
-	}
-	json.Unmarshal(bytes, &m2)
-	if m2.Data.Status != "OK" {
-		return uri
-	}
-
-	if m2.Data.Content != "" {
-		return UrlInfo{
-			strings.TrimRight(m2.Data.Content, "\n"),
-			uri.Name,
-		}
-	}
-
 	return uri
 }
 
@@ -102,6 +220,7 @@ func scrape_soundcloud(uri UrlInfo) UrlInfo {
 
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
+	resp.Body.Close()
 	body := buf.String()
 
 	nbody := strings.TrimRight(strings.TrimLeft(body, "?()"), ");")
@@ -126,33 +245,35 @@ func scrape_dropbox(uri UrlInfo) UrlInfo {
 	}
 }
 
-func scrape_uri(uri UrlInfo) UrlInfo {
+func scrape_uri(uri UrlInfo, kind TypeMedia) UrlInfo {
 	checker := func(dom string, pref string) bool {
-		return strings.HasPrefix(
-			strings.TrimLeft(
-				strings.TrimLeft(dom, "m."),
-				"www."),
-			pref)
+		sep := strings.Split(dom, ".")
+		if len(sep) == 2 {
+			return sep[0] == pref
+		} else if len(sep) == 3 {
+			return sep[1] == pref
+		}
+		return false
 	}
 	u, err := url.Parse(uri.Url)
 	if err != nil {
 		return uri
 	}
 	dom := u.Host
-	if checker(dom, "soundcloud.com") {
+	if checker(dom, "soundcloud") {
 		return scrape_soundcloud(uri)
 	}
 
-	// if checker(dom, "youtube.") {
-	// 	return scrape_youtube(uri)
-	// }
+	if checker(dom, "youtube") {
+		return new_scrape_youtube(uri, kind)
+	}
 
-	// if checker(dom, "youtu.be") {
-	// 	uri.Url = fmt.Sprintf("%s?v=%s", uri.Url, strings.TrimLeft(u.Path, "/"))
-	// 	return scrape_youtube(uri)
-	// }
+	if strings.HasSuffix(dom, ".be") && checker(dom, "youtu") {
+		// uri.Url = fmt.Sprintf("%s?v=%s", uri.Url, strings.TrimLeft(u.Path, "/"))
+		return new_scrape_youtube(uri, kind)
+	}
 
-	if checker(dom, "dropbox.com") {
+	if checker(dom, "dropbox") {
 		return scrape_dropbox(uri)
 	}
 	return uri

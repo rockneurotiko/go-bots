@@ -9,21 +9,31 @@ import (
 	"github.com/rockneurotiko/go-tgbot"
 )
 
+type AnswerMeaning int
+
+const (
+	ErrorDownloading AnswerMeaning = iota
+	Timeout
+	OkDownloading
+)
+
 type WorkRequest struct {
 	Id            int
 	Url           string
 	OriginalUrl   string
+	Kind          TypeMedia
 	Name          string
 	Bot           tgbot.TgBot
 	AnswerChannel chan WorkAnswer
 }
 
-func NewWorkRequest(msg tgbot.Message, url string, original string, name string, bot tgbot.TgBot) (WorkRequest, chan WorkAnswer) {
+func NewWorkRequest(msg tgbot.Message, url string, original string, kind TypeMedia, name string, bot tgbot.TgBot) (WorkRequest, chan WorkAnswer) {
 	c := make(chan WorkAnswer)
 	return WorkRequest{
 		msg.Chat.ID,
 		url,
 		original,
+		kind,
 		name,
 		bot,
 		c,
@@ -31,7 +41,7 @@ func NewWorkRequest(msg tgbot.Message, url string, original string, name string,
 }
 
 type WorkAnswer struct {
-	Result bool
+	Result AnswerMeaning
 }
 
 var WorkQueue = make(chan WorkRequest, 10) // Simultaneous requests!
@@ -61,7 +71,7 @@ func (w Worker) Start() {
 				res, err := http.Get(work.Url)
 				if err != nil {
 					log.Println(err)
-					work.AnswerChannel <- WorkAnswer{false}
+					work.AnswerChannel <- WorkAnswer{ErrorDownloading}
 					continue
 				}
 				// Know if document/video/image?
@@ -81,12 +91,13 @@ func (w Worker) Start() {
 						fileid = result.Video.FileID
 					}
 					if fileid != "" {
-						cacheids.Set(work.Url, fileid, cache.DefaultExpiration)
+						urlfmt := work.Kind.WithUrl(work.OriginalUrl)
+						cacheids.Set(urlfmt, fileid, cache.DefaultExpiration)
 					}
 				}
 				// Just to avoid non reading sender channel
 				select {
-				case work.AnswerChannel <- WorkAnswer{true}:
+				case work.AnswerChannel <- WorkAnswer{OkDownloading}:
 				case <-time.After(time.Second * 1):
 				}
 			case <-w.QuitChan:

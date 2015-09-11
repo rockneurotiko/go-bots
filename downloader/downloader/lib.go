@@ -13,7 +13,6 @@ import (
 	"github.com/pivotal-golang/bytefmt"
 	"github.com/pmylund/go-cache"
 	"github.com/rockneurotiko/go-tgbot"
-	stdn "github.com/traetox/speedtest/speedtestdotnet"
 )
 
 const MAX_SIZE = 52428800
@@ -75,6 +74,7 @@ func file_info(uri string) FileInfo {
 func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]string) *string {
 	urlstring := args[0]
 	name := ""
+	kind := Video
 
 	if len(args) > 1 {
 		urlstring = args[1]
@@ -82,6 +82,10 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 
 	if len(args) > 2 {
 		name = args[2]
+		if name == "audio" {
+			name = ""
+			kind = Audio
+		}
 	}
 
 	originalurl := urlstring
@@ -101,16 +105,17 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		return nil
 	}
 
-	tmpu := scrape_uri(UrlInfo{urlstring, ""})
-	urlstring = tmpu.Url
-
 	// id, ok := cacheids.Get(urlstring)
-	id, ok := cacheids.Get(originalurl)
+	urlcachekind := kind.WithUrl(originalurl)
+	id, ok := cacheids.Get(urlcachekind)
 	if ok {
 		log.Println("Founded in cache!")
 		bot.Answer(msg).Document(id).End()
 		return nil
 	}
+
+	tmpu := scrape_uri(UrlInfo{urlstring, ""}, kind)
+	urlstring = tmpu.Url
 
 	// Get file info
 	info := file_info(urlstring)
@@ -152,17 +157,14 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 	// The guy are downloading
 	cacheuserdownload.Set(chatid, originalurl, cache.DefaultExpiration)
 
-	wr, c := NewWorkRequest(msg, urlstring, originalurl, info.Name, bot)
+	wr, c := NewWorkRequest(msg, urlstring, originalurl, kind, info.Name, bot)
 
 	// Enqueue ^^
 	WorkQueue <- wr
 
-	answer := WorkAnswer{true}
+	answer := WorkAnswer{OkDownloading}
 	ntimes := uint64(0)
 	measured := size / MAX_SEND_UPLOAD
-	if bpsspeed > 0 {
-		measured = (size * 8) / bpsspeed // in bits
-	}
 
 	// Only send uploading document if size is > 5MB
 	if size > MAX_SEND_UPLOAD {
@@ -176,7 +178,7 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 			case <-time.After(time.Second * 7):
 				ntimes++
 				if ntimes >= measured+1 {
-					answer = WorkAnswer{false}
+					answer = WorkAnswer{Timeout}
 					break Download
 				}
 				bot.Answer(msg).Action(tgbot.UploadDocument).End()
@@ -186,8 +188,17 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 		answer = <-c
 	}
 
-	if !answer.Result {
-		bot.Answer(msg).Text("Some error happened while trying to download your URL...").End()
+	msgerror := ""
+	if answer.Result == ErrorDownloading {
+		msgerror = "Some error happened while trying to download your URL..."
+	}
+
+	if answer.Result == Timeout {
+		msgerror = "My download estimation has timed out, but maybe the server is in a huge load, so you will maybe receive the file later ;-)"
+	}
+
+	if msgerror != "" {
+		bot.Answer(msg).Text(msgerror).End()
 	}
 
 	cacheuserdownload.Delete(chatid)
@@ -238,31 +249,35 @@ If you like it you can vote this bot in @storebot: https://telegram.me/storebot?
 	return nil
 }
 
-var bpsspeed uint64 = 0
+// var bpsspeed uint64 = 0
 
-func BuildBot(token string, workers int) *tgbot.TgBot {
+var youtubedl string = ""
+
+func BuildBot(token string, workers int, youtubeurl string) *tgbot.TgBot {
+	youtubedl = youtubeurl
 	StartDispatcher(workers)
 
-	fmt.Println("Start upstream test")
-	cfg, err := stdn.GetConfig()
-	if err == nil && len(cfg.Servers) > 0 {
-		for i, s := range cfg.Servers {
-			fmt.Println("Testing server", i)
-			bps, err := s.Upstream(3)
-			if err == nil {
-				bpsspeed = bps
-				fmt.Println("Founded speed!", bps)
-				break
-			}
-		}
-	}
-	fmt.Println("Finished upstream test")
+	// fmt.Println("Start upstream test")
+	// cfg, err := stdn.GetConfig()
+	// if err == nil && len(cfg.Servers) > 0 {
+	// 	for i, s := range cfg.Servers {
+	// 		fmt.Println("Testing server", i)
+	// 		bps, err := s.Upstream(3)
+	// 		if err == nil {
+	// 			bpsspeed = bps
+	// 			fmt.Println("Founded speed!", bps)
+	// 			break
+	// 		}
+	// 	}
+	// }
+	// fmt.Println("Finished upstream test")
+
 	bot := tgbot.New(token).
 		SimpleCommandFn(`help`, help).
 		SimpleCommandFn(`start`, help).
 		SimpleCommandFn(`tricks`, tricks).
 		// MultiCommandFn([]string{`down (\S+)`, `down (\S+) ([a-zA-Z0-9_-]+\..+)`}, down).
-		MultiRegexFn([]string{`^([^/]\S+)$`, `^([^/]\S+) ([a-zA-Z0-9_-]+\..+)$`}, down).
+		MultiRegexFn([]string{`^([^/]\S+)$`, `^([^/]\S+) (audio|[a-zA-Z0-9_-]+\..+)$`}, down).
 		AnyMsgFn(func(bot tgbot.TgBot, msg tgbot.Message) {
 		log.Println(msg)
 	})

@@ -11,7 +11,8 @@ import (
 func main() {
 	godotenv.Load("secrets.env")
 	token := os.Getenv("TELEGRAM_KEY")
-	bot := downloader.BuildBot(token, 5)
+	youtubeurl := os.Getenv("YOUTUBE_URL")
+	bot := downloader.BuildBot(token, 5, youtubeurl)
 	fmt.Println("Let's start!")
 	bot.SimpleStart()
 }
