@@ -16,10 +16,10 @@ import (
 )
 
 const MAX_SIZE = 52428800
-const MAX_SEND_UPLOAD = 5242880
+const MAX_SEND_UPLOAD = 102400 // 100KB/s
 
 var cacheids = cache.New(60*time.Minute, 5*time.Minute)
-var cacheuserdownload = cache.New(2*time.Minute, 2*time.Minute) // 2 minutes max to download 50MB and/or let enqueue a new one
+var cacheuserdownload = cache.New(MAX_SIZE/MAX_SEND_UPLOAD*time.Second, MAX_SIZE/MAX_SEND_UPLOAD*time.Second) // 2 minutes max to download 50MB and/or let enqueue a new one
 
 type FileInfo struct {
 	Size uint64
@@ -120,7 +120,7 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 	// Get file info
 	info := file_info(urlstring)
 	if tmpu.Name != "" {
-		info.Name = tmpu.Name
+		info.Name = strings.Replace(tmpu.Name, " ", "_", -1)
 	}
 	if name != "" {
 		info.Name = name
@@ -165,6 +165,7 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 	answer := WorkAnswer{OkDownloading}
 	ntimes := uint64(0)
 	measured := size / MAX_SEND_UPLOAD
+	times_sleep := uint64(7)
 
 	// Only send uploading document if size is > 5MB
 	if size > MAX_SEND_UPLOAD {
@@ -175,8 +176,8 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 			select {
 			case answer = <-c:
 				break Download
-			case <-time.After(time.Second * 7):
-				ntimes++
+			case <-time.After(time.Second * time.Duration(times_sleep)):
+				ntimes += times_sleep
 				if ntimes >= measured+1 {
 					answer = WorkAnswer{Timeout}
 					break Download
@@ -255,6 +256,7 @@ var youtubedl string = ""
 
 func BuildBot(token string, workers int, youtubeurl string) *tgbot.TgBot {
 	youtubedl = youtubeurl
+	get_all_domains_available()
 	StartDispatcher(workers)
 
 	// fmt.Println("Start upstream test")
