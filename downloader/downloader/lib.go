@@ -114,7 +114,10 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		return nil
 	}
 
-	tmpu := scrape_uri(UrlInfo{urlstring, ""}, kind)
+	cacheuserdownload.Set(chatid, originalurl, cache.DefaultExpiration)
+	defer cacheuserdownload.Delete(chatid)
+
+	tmpu := scrape_uri(UrlInfo{urlstring, ""}, kind, bot, msg.From.ID)
 	urlstring = tmpu.Url
 
 	// Get file info
@@ -155,8 +158,6 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 	log.Printf("Downloading URL: %s.\n", urlstring)
 
 	// The guy are downloading
-	cacheuserdownload.Set(chatid, originalurl, cache.DefaultExpiration)
-
 	wr, c := NewWorkRequest(msg, urlstring, originalurl, kind, info.Name, bot)
 
 	// Enqueue ^^
@@ -202,21 +203,19 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 		bot.Answer(msg).Text(msgerror).End()
 	}
 
-	cacheuserdownload.Delete(chatid)
-
 	return nil
 }
 
-func tricks(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
-	// - Youtube: Uses an API to find the media download
-	helptext := `I will try to do some automatic detections to find the media you want. Currently supported:
-- SoundCloud: Uses an API to find the media download
-- Dropbox: Change "dl=0" to "raw=1" to download
-`
-	bot.Answer(msg).Text(helptext).End()
+// func tricks(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+// 	// - Youtube: Uses an API to find the media download
+// 	helptext := `I will try to do some automatic detections to find the media you want. Currently supported:
+// - SoundCloud: Uses an API to find the media download
+// - Dropbox: Change "dl=0" to "raw=1" to download
+// `
+// 	bot.Answer(msg).Text(helptext).End()
 
-	return nil
-}
+// 	return nil
+// }
 
 func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	bot.Answer(msg).Text(fmt.Sprintf(`Hi! I'm Downloader Bot! How are you %s?
@@ -225,25 +224,22 @@ I'll help you to download files :)
 
 You can only download one file at a time, and there are a general queue to not flood my free server, so maybe it take some time to download it (you will see that are downloading when the bot sends "Uploading document").
 
-You can download in two ways:
+You can download in three ways:
+
 - Send the URL, for example, this will send you the song:
-https://soundcloud.com/monstercat/tristam-braken-flight
+>>= https://soundcloud.com/monstercat/tristam-braken-flight
+
 - Send the URL and a name of file, for example, this will send you the song with the name "monstercat_awesome.mp3":
-https://soundcloud.com/monstercat/tristam-braken-flight monstercat_awesome.mp3
+>>= https://soundcloud.com/monstercat/tristam-braken-flight monstercat_awesome.mp3
 
-To try to be fast, I have a cache that wipes the URL's if hadn't been used in one hour. Thanks to that you can ask for an URL two times and the second time will be instant.
-But, because of that, if someone ask an URL with name, and you ask the same URL, you will gate that name no matter what, until the cache is wiped :)
-
-Other commands:
-- /help - Show this help
-- /start - Start the bot (and show this help too :P)
-- /tricks - Show some URL tricks
+- When the URL can recognize the audio, for example a youtube video, you can ask for it writing "audio" after the URL:
+>>= https://youtube.com/watch?v=BBBBB audio
 
 Icon made by Dirtyworks (License: CC BY 3.0)
 
 This bot is open source and has been created by @rockneurotiko, I hope that you like it ;-)
 
-The source code can be founded in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
+The source code can be found in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
 
 If you like it you can vote this bot in @storebot: https://telegram.me/storebot?start=simple_downloader_bot
 `, msg.From.FirstName)).DisablePreview(true).End()
@@ -277,7 +273,7 @@ func BuildBot(token string, workers int, youtubeurl string) *tgbot.TgBot {
 	bot := tgbot.New(token).
 		SimpleCommandFn(`help`, help).
 		SimpleCommandFn(`start`, help).
-		SimpleCommandFn(`tricks`, tricks).
+		// SimpleCommandFn(`tricks`, tricks).
 		// MultiCommandFn([]string{`down (\S+)`, `down (\S+) ([a-zA-Z0-9_-]+\..+)`}, down).
 		MultiRegexFn([]string{`^([^/]\S+)$`, `^([^/]\S+) (audio|[a-zA-Z0-9_-]+\..+)$`}, down).
 		AnyMsgFn(func(bot tgbot.TgBot, msg tgbot.Message) {
