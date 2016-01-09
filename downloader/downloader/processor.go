@@ -7,6 +7,7 @@ import (
 
 	"github.com/pmylund/go-cache"
 	"github.com/rockneurotiko/go-tgbot"
+	"github.com/rockneurotiko/gorequest"
 )
 
 type AnswerMeaning int
@@ -22,21 +23,23 @@ type WorkRequest struct {
 	Url           string
 	OriginalUrl   string
 	Kind          TypeMedia
+	Cookies       []*http.Cookie
 	Name          string
 	Bot           tgbot.TgBot
 	AnswerChannel chan WorkAnswer
 }
 
-func NewWorkRequest(msg tgbot.Message, url string, original string, kind TypeMedia, name string, bot tgbot.TgBot) (WorkRequest, chan WorkAnswer) {
+func NewWorkRequest(msg tgbot.Message, url string, original string, kind TypeMedia, name string, bot tgbot.TgBot, cookies []*http.Cookie) (WorkRequest, chan WorkAnswer) {
 	c := make(chan WorkAnswer)
 	return WorkRequest{
-		msg.Chat.ID,
-		url,
-		original,
-		kind,
-		name,
-		bot,
-		c,
+		Id:            msg.Chat.ID,
+		Url:           url,
+		OriginalUrl:   original,
+		Kind:          kind,
+		Name:          name,
+		Bot:           bot,
+		AnswerChannel: c,
+		Cookies:       cookies,
 	}, c
 }
 
@@ -44,20 +47,22 @@ type WorkAnswer struct {
 	Result AnswerMeaning
 }
 
-var WorkQueue = make(chan WorkRequest, 10) // Simultaneous requests!
+// var WorkQueue = make(chan WorkRequest, 10) // Simultaneous requests!
+var WorkQueue = make(chan WorkRequest, 1)    // Buffered channel to not lose anything
+var StopDispatcher = make(chan chan bool, 1) // Stop all!
 
 type Worker struct {
 	ID          int
 	Work        chan WorkRequest
 	WorkerQueue chan chan WorkRequest
-	QuitChan    chan bool
+	QuitChan    chan chan bool
 }
 
 func NewWorker(id int, workerQueue chan chan WorkRequest) Worker {
 	return Worker{ID: id,
 		Work:        make(chan WorkRequest),
 		WorkerQueue: workerQueue,
-		QuitChan:    make(chan bool)}
+		QuitChan:    make(chan chan bool)}
 }
 
 func (w Worker) Start() {
@@ -67,8 +72,22 @@ func (w Worker) Start() {
 			w.WorkerQueue <- w.Work
 			select {
 			case work := <-w.Work:
+				urlcachekind := work.Kind.WithUrl(work.OriginalUrl)
+				id, ok := cacheids.Get(urlcachekind)
+				if ok {
+					log.Println("Founded in cache (in processor)!")
+					work.Bot.Send(work.Id).Document(id).End()
+					continue
+				}
+
 				// log.Printf("Received work %v\n", work)
-				res, err := http.Get(work.Url)
+				res, _, err := gorequest.New().
+					DisableKeepAlives(true).
+					CloseRequest(true).
+					Get(work.Url).
+					AddCookies(work.Cookies).
+					End()
+				// res, err := http.Get(work.Url)
 				if err != nil {
 					log.Println(err)
 					work.AnswerChannel <- WorkAnswer{ErrorDownloading}
@@ -100,16 +119,20 @@ func (w Worker) Start() {
 				case work.AnswerChannel <- WorkAnswer{OkDownloading}:
 				case <-time.After(time.Second * 1):
 				}
-			case <-w.QuitChan:
+			case cans := <-w.QuitChan:
 				log.Printf("Stopping worker %d\n", w.ID)
+				// Notify me are finished!
+				cans <- true
 				return
 			}
 		}
 	}()
 }
 
-func (w Worker) Stop() {
+func (w Worker) Stop() chan bool {
+	c := make(chan bool, 1)
 	go func() {
-		w.QuitChan <- true
+		w.QuitChan <- c
 	}()
+	return c
 }

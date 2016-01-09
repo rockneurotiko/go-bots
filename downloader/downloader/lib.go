@@ -6,13 +6,17 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/carbocation/go-instagram/instagram"
 	"github.com/pivotal-golang/bytefmt"
 	"github.com/pmylund/go-cache"
 	"github.com/rockneurotiko/go-tgbot"
+	"github.com/rockneurotiko/slideshare"
 )
 
 const MAX_SIZE = 52428800
@@ -26,19 +30,27 @@ type FileInfo struct {
 	Name string
 }
 
-func file_info(uri string) FileInfo {
-	defaultreturn := FileInfo{0, ""}
-
-	response, err := http.Head(uri)
+func file_info(uri string) FileInfo { 
+	defaultreturn := FileInfo{0, ""} 
+        response, err := http.Head(uri)
 	if err != nil {
-		log.Printf("Error while downloading %s: %s", uri, err.Error())
+		log.Printf("Error while doing HEAD %s: %s", uri, err.Error())
 		return defaultreturn
 	}
+	defer response.Body.Close()
 
 	// Verify if the response was ok
 	if response.StatusCode != http.StatusOK {
-		log.Printf("Server return non-200 status: %v\n", response.Status)
-		return defaultreturn
+		log.Printf("Server return non-200 status to HEAD: %v\nLet's try GET\n", response.Status)
+		response, err = http.Get(uri)
+		if err != nil {
+			log.Printf("Error while doing GET %s: %s", uri, err.Error())
+			return defaultreturn
+		}
+		if response.StatusCode != http.StatusOK {
+			log.Printf("Server return non-200 status to GET: %v", response.Status)
+			return defaultreturn
+		}
 	}
 
 	length, _ := strconv.Atoi(response.Header.Get("Content-Length"))
@@ -75,6 +87,7 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 	urlstring := args[0]
 	name := ""
 	kind := Video
+	format := ""
 
 	if len(args) > 1 {
 		urlstring = args[1]
@@ -82,9 +95,16 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 
 	if len(args) > 2 {
 		name = args[2]
-		if name == "audio" {
+		switch name {
+		case "audio":
 			name = ""
 			kind = Audio
+		case "video":
+			name = ""
+			kind = Video
+		case "format":
+			name = ""
+			format = args[3]
 		}
 	}
 
@@ -105,7 +125,7 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 		return nil
 	}
 
-	// id, ok := cacheids.Get(urlstring)
+	// check if see in cache or no
 	urlcachekind := kind.WithUrl(originalurl)
 	id, ok := cacheids.Get(urlcachekind)
 	if ok {
@@ -117,8 +137,23 @@ func down(bot tgbot.TgBot, msg tgbot.Message, args []string, kargs map[string]st
 	cacheuserdownload.Set(chatid, originalurl, cache.DefaultExpiration)
 	defer cacheuserdownload.Delete(chatid)
 
-	tmpu := scrape_uri(UrlInfo{urlstring, ""}, kind, bot, msg.From.ID)
+	tmpu := scrape_uri(UrlInfo{
+		Url:     urlstring,
+		Name:    "",
+		Format:  format,
+		Cookies: make([]*http.Cookie, 0),
+		Error:   "",
+		Kind:    kind,
+	}, kind, bot, msg.From.ID)
+
+	if tmpu.Error != "" {
+		bot.Answer(msg).Text(tmpu.Error).End()
+		return nil
+	}
 	urlstring = tmpu.Url
+	if tmpu.Kind != kind {
+		kind = tmpu.Kind
+	}
 
 	// Get file info
 	info := file_info(urlstring)
@@ -144,7 +179,7 @@ Reason: %s
 
 URL: %s
 Name: %s
-Size: %s`, moreinfo, originalurl, info.Name, prettysize)).End()
+Size: %s`, moreinfo, originalurl, info.Name, prettysize)).DisablePreview(true).End()
 		return nil
 	}
 
@@ -158,7 +193,7 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 	log.Printf("Downloading URL: %s.\n", urlstring)
 
 	// The guy are downloading
-	wr, c := NewWorkRequest(msg, urlstring, originalurl, kind, info.Name, bot)
+	wr, c := NewWorkRequest(msg, urlstring, originalurl, kind, info.Name, bot, tmpu.Cookies)
 
 	// Enqueue ^^
 	WorkQueue <- wr
@@ -206,16 +241,56 @@ Size: %s`, originalurl, info.Name, prettysize)).End()
 	return nil
 }
 
-// func tricks(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
-// 	// - Youtube: Uses an API to find the media download
-// 	helptext := `I will try to do some automatic detections to find the media you want. Currently supported:
-// - SoundCloud: Uses an API to find the media download
-// - Dropbox: Change "dl=0" to "raw=1" to download
-// `
-// 	bot.Answer(msg).Text(helptext).End()
+func about(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	m := `This bot is open source and has been created by @rockneurotiko, I hope that you like it ;-)
 
-// 	return nil
-// }
+The source code can be found in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
+
+The icon is made by Dirtyworks (License: CC BY 3.0)
+
+Thanks for using it and rate in @storebot: https://telegram.me/storebot?start=simple_downloader_bot`
+	bot.Answer(msg).Text(m).DisablePreview(true).End()
+	return nil
+}
+
+func contact(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	m := `You can contact with the developer in Telegram talking to @rockneurotiko
+
+Please, don't hesitate in contact if you find something weird or you have some suggestion :)
+
+Thanks for using it and rate in @storebot: https://telegram.me/storebot?start=simple_downloader_bot`
+	bot.Answer(msg).Text(m).DisablePreview(true).End()
+	return nil
+}
+
+func googleformats(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	docf := strings.Join(doccheck.ValidFormats, ", ")
+	presf := strings.Join(presentationcheck.ValidFormats, ", ")
+	spreadf := strings.Join(spreadsheetcheck.ValidFormats, ", ")
+
+	fmsg := fmt.Sprintf(`- Google Drive: The file format, you can't choose this one.
+- Google Docs: %s
+- Google Presentations: %s
+- Google Spreadsheets: %s
+
+Ask for the custom format when you send the URL, like:
+<URL> format <format>`, docf, presf, spreadf)
+	bot.Answer(msg).Text(fmsg).End()
+	return nil
+}
+
+func supported(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
+	bot.Answer(msg).Text(`Currently known supported (let me know if you know other):
+>>= Direct link of a file
+>>= Youtube (video or audio)
+>>= Soundcloud
+>>= Google Drive, Docs, Presentations, Spreadsheets
+>>= Uploadboy (This is in testing!)
+>>= SlideShare presentations
+>>= Almost any site supported (But probably not every site :P) by youtube-dl: https://rg3.github.io/youtube-dl/supportedsites.html
+`).DisablePreview(true).End()
+	return nil
+}
 
 func help(bot tgbot.TgBot, msg tgbot.Message, text string) *string {
 	bot.Answer(msg).Text(fmt.Sprintf(`Hi! I'm Downloader Bot! How are you %s?
@@ -224,22 +299,21 @@ I'll help you to download files :)
 
 You can only download one file at a time, and there are a general queue to not flood my free server, so maybe it take some time to download it (you will see that are downloading when the bot sends "Uploading document").
 
-You can download in three ways:
+Type /supported to see the currently knowed sites from you can download
 
-- Send the URL, for example, this will send you the song:
->>= https://soundcloud.com/monstercat/tristam-braken-flight
+You can download in some different ways:
 
-- Send the URL and a name of file, for example, this will send you the song with the name "monstercat_awesome.mp3":
->>= https://soundcloud.com/monstercat/tristam-braken-flight monstercat_awesome.mp3
+>>= Just send the URL
+https://soundcloud.com/monstercat/tristam-braken-flight
 
-- When the URL can recognize the audio, for example a youtube video, you can ask for it writing "audio" after the URL:
->>= https://youtube.com/watch?v=BBBBB audio
+>>= Send the URL with a file name (the format are mandatory and there are just an space after the URL and before the file name :P)
+https://soundcloud.com/monstercat/tristam-braken-flight monstercat_awesome.mp3
 
-Icon made by Dirtyworks (License: CC BY 3.0)
+>>= Send the URL with "audio" at the end to try to send it instead of the video. Currently I know that works in youtube (let me know if you find other)
+https://www.youtube.com/watch?v=xjnbC8fwslM audio
 
-This bot is open source and has been created by @rockneurotiko, I hope that you like it ;-)
-
-The source code can be found in: https://github.com/rockneurotiko/go-bots/tree/master/downloader
+>>= Send the URL with "format <formatid>" at the end to send it in that format, currently only work with some Google services, use the command /googleformats to see the formats available
+https://docs.google.com/document/d/1s_BZK92pzK6zby6LhDnB0giVNJR-yDxsoALvuAEX7d8/edit?usp=sharing format pdf
 
 If you like it you can vote this bot in @storebot: https://telegram.me/storebot?start=simple_downloader_bot
 `, msg.From.FirstName)).DisablePreview(true).End()
@@ -249,11 +323,29 @@ If you like it you can vote this bot in @storebot: https://telegram.me/storebot?
 // var bpsspeed uint64 = 0
 
 var youtubedl string = ""
+var instaclient *instagram.Client
+var slideshareclient *slideshare.Service
 
-func BuildBot(token string, workers int, youtubeurl string) *tgbot.TgBot {
+func setupSignalHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	go func(c chan os.Signal) {
+		<-c
+		ac := make(chan bool, 1)
+		StopDispatcher <- ac
+		<-ac
+		os.Exit(0)
+	}(c)
+}
+
+func BuildBot(token string, workers int, youtubeurl string, instaid string, slideapi string, slidesecret string) *tgbot.TgBot {
 	youtubedl = youtubeurl
+	slideshareclient = &slideshare.Service{slideapi, slidesecret}
+	instaclient = instagram.NewClient(nil)
+	instaclient.ClientID = instaid
 	get_all_domains_available()
 	StartDispatcher(workers)
+	setupSignalHandler()
 
 	// fmt.Println("Start upstream test")
 	// cfg, err := stdn.GetConfig()
@@ -271,14 +363,28 @@ func BuildBot(token string, workers int, youtubeurl string) *tgbot.TgBot {
 	// fmt.Println("Finished upstream test")
 
 	bot := tgbot.New(token).
-		SimpleCommandFn(`help`, help).
-		SimpleCommandFn(`start`, help).
-		// SimpleCommandFn(`tricks`, tricks).
-		// MultiCommandFn([]string{`down (\S+)`, `down (\S+) ([a-zA-Z0-9_-]+\..+)`}, down).
-		MultiRegexFn([]string{`^([^/]\S+)$`, `^([^/]\S+) (audio|[a-zA-Z0-9_-]+\..+)$`}, down).
 		AnyMsgFn(func(bot tgbot.TgBot, msg tgbot.Message) {
-		log.Println(msg)
-	})
-
+		m := fmt.Sprintf("<%d", msg.From.ID)
+		if msg.From.Username != nil {
+			m = fmt.Sprintf("%s(%s)", m, *msg.From.Username)
+		}
+		m = fmt.Sprintf("%s>:", m)
+		if msg.Text != nil {
+			m = fmt.Sprintf("%s %s", m, *msg.Text)
+		}
+		log.Println(m)
+	}).
+		SimpleCommandFn(`help`, help).
+		SimpleCommandFn(`supported`, supported).
+		SimpleCommandFn(`start`, help).
+		SimpleCommandFn(`about`, about).
+		SimpleCommandFn(`contact`, contact).
+		SimpleCommandFn(`googleformats`, googleformats).
+		MultiRegexFn([]string{
+		`^([^/]\S+)$`,
+		`^([^/]\S+) (audio|video)$`,
+		`^([^/]\S+) (format) (doc|pdf|txt|html|odt|pptx|xlsx)$`,
+		`^([^/]\S+) ([a-zA-Z0-9_-]+\..+)$`,
+	}, down)
 	return bot
 }

@@ -12,7 +12,12 @@ func main() {
 	godotenv.Load("secrets.env")
 	token := os.Getenv("TELEGRAM_KEY")
 	youtubeurl := os.Getenv("YOUTUBE_URL")
-	bot := downloader.BuildBot(token, 5, youtubeurl)
+	instaid := os.Getenv("INSTAGRAM_ID")
+
+	slideapi := os.Getenv("SLIDESHARE_KEY")
+	slidesecret := os.Getenv("SLIDESHARE_SECRET")
+
+	bot := downloader.BuildBot(token, 1, youtubeurl, instaid, slideapi, slidesecret)
 	fmt.Println("Let's start!")
 	bot.SimpleStart()
 }

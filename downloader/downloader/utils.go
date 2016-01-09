@@ -10,6 +10,15 @@ import (
 	"gopkg.in/fatih/set.v0"
 )
 
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
 var listvaliddoms []string = []string{}
 
 func get_all_domains_available() {
