@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	MAX_RETRIES = 3
+	MAX_RETRIES = 5
 	MINS_SLEEP  = 5
 )
 
@@ -171,7 +171,12 @@ func readAllDbRss(bot tgbot.TgBot) {
 						continue
 					} else {
 						fmt.Fprintf(os.Stderr, "[e] (%d/%d) %s: %s\n", n_errors, MAX_RETRIES, uri, err)
-						fmt.Printf("Removing url %s\n", uri)
+						fmt.Fprintf(os.Stderr, "Removing url %s\n", uri)
+						sendToAll(bot, uri, []NewStruct{
+							NewStruct{
+								Text: fmt.Sprintf("Hi! I had too many failures reading the RSS %s and I'm going to remove it, you can subscribe againg using:\n/sub %s", uri, uri),
+							},
+						})
 						cleanBadUrl(uri)
 						return
 					}
@@ -315,8 +320,14 @@ func botPollSubscribe(bot tgbot.TgBot, msg tgbot.Message, uri string, timeout in
 			} else {
 				if firsttime {
 					bot.Answer(msg).Text(fmt.Sprintf("Bad RSS: %s, maybe the URL is bad.\nError msg: %s", uri, err.Error())).ReplyToMessage(msg.ID).End()
+				} else {
+					sendToAll(bot, uri, []NewStruct{
+						NewStruct{
+							Text: fmt.Sprintf("Hi! I had too many failures reading the RSS %s and I'm going to remove it, you can subscribe againg using:\n/sub %s", uri, uri),
+						},
+					})
 				}
-				fmt.Printf("Removing url %s\n", uri)
+				fmt.Fprintf(os.Stderr, "Removing url %s\n", uri)
 				cleanBadUrl(uri)
 				return
 			}
