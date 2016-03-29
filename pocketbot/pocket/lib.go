@@ -61,7 +61,7 @@ func (self ConfigJ) help(bot tgbot.TgBot, msg tgbot.Message, text string) *strin
 		authtext = "Seems that you are not authenticate, use the /auth command to authenticate and make a real use of me :)"
 	}
 
-	textans := fmt.Sprintf(`Hi! I'm Pocket Bot! How are you you %s?
+	textans := fmt.Sprintf(`Hi! I'm Pocket Bot! How are you %s?
 I'll help you to see and administrate your saved links of Pocket.
 
 %s
@@ -491,9 +491,9 @@ func BuildBot(token string, localconfig ConfigJ, db *leveldb.DB) *tgbot.TgBot {
 		CommandFn(`stop ?(list)?`, localconfig.stop).
 		SimpleCommandFn(`auth`, localconfig.auth_f).
 		MultiCommandFn([]string{`list`,
-		`list (\d+)`,
-		`list (\d+) (\d+)`,
-		`list (\d+) (\d+) - (\d+)`}, localconfig.list).
+			`list (\d+)`,
+			`list (\d+) (\d+)`,
+			`list (\d+) (\d+) - (\d+)`}, localconfig.list).
 		SimpleCommandFn(`sync`, localconfig.sync).
 		CommandFn(`add (.+)`, localconfig.add).      // add
 		CommandFn(`delete (.+)`, localconfig.remove) // delete
